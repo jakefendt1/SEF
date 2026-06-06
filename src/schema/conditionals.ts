@@ -4,7 +4,7 @@ import type { FormValues } from './formSchema'
 // Proposed interpretation: Spiral 2 fields appear when travel direction
 // indicates a two-drum / double-belt layout. Confirm with spiral SME.
 
-export const DOUBLE_DRUM_DIRECTIONS = ['Two Drum, One Belt', 'One Drum, Two Belt'] as const
+export const DOUBLE_DRUM_DIRECTIONS = ['Two Drum, One Belt', 'Two Drum, Two Belt'] as const
 
 export function isSpiral2Applicable(travelDirection: string | undefined): boolean {
   return travelDirection != null &&
@@ -104,7 +104,8 @@ export const QUICK_MODE_FIELDS = new Set<keyof FormValues>([
   // § 4 — System Details (all)
   'numRails',
   'railSpacing',
-  'overhang',
+  'insideOverhang',
+  'outsideOverhang',
   'beltSupportMaterial',
   'carrywayWearstripMaterial',
   'carrywayWearstripMaterialOther',
@@ -135,6 +136,7 @@ export function getFullOnlyFields(): ReadonlyArray<keyof FormValues> {
   const all: Array<keyof FormValues> = [
     // § 1 — Personal Info (full-only portion; name/companyName/email/phone are Quick)
     'title', 'countryOrRegion', 'address', 'city', 'stateProvince', 'zipPostalCode',
+
     // § 2 — Full application fields
     'howProductCarried', 'heatSource', 'heatSourceSpecify', 'productProperties',
     'beltCleaning', 'chemicalsUsed', 'productLoad', 'productLoadUnit',

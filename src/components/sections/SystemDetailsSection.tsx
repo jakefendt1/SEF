@@ -15,7 +15,6 @@ interface Props {
   isQuickMode: boolean
 }
 
-const NUM_RAILS = ['2', '3', '4', '5']
 const BELT_SUPPORT_MATERIALS = ['Stainless Steel', 'Aluminum', 'Galvanized', 'Painted Steel']
 const CARRYWAY_MATERIALS = ['UHMW', 'Other']
 const DRUM_TYPES = ['Cage', 'Solid']
@@ -37,11 +36,10 @@ export function SystemDetailsSection({ control, isQuickMode }: Props) {
       {() => (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <RadioGroupField
+            <NumberField
               name="numRails"
               control={control}
               label="Number of Rails"
-              options={NUM_RAILS}
               required
             />
             <NumberField
@@ -52,13 +50,22 @@ export function SystemDetailsSection({ control, isQuickMode }: Props) {
               required
             />
           </div>
-          <NumberField
-            name="overhang"
-            control={control}
-            label="Overhang"
-            unit="in"
-            required
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <NumberField
+              name="insideOverhang"
+              control={control}
+              label="Inside Overhang"
+              unit="in"
+              required
+            />
+            <NumberField
+              name="outsideOverhang"
+              control={control}
+              label="Outside Overhang"
+              unit="in"
+              required
+            />
+          </div>
           <SelectField
             name="beltSupportMaterial"
             control={control}

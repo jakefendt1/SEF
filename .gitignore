@@ -17,6 +17,7 @@ dist-ssr
 .env.local
 credentials.json
 token.json
+spiral-eval-*.json
 
 # Editor directories and files
 .vscode/*
@@ -28,3 +29,6 @@ token.json
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*

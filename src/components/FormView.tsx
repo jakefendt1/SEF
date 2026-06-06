@@ -55,12 +55,8 @@ export function FormView({ assessmentId, initialData, onDone }: Props) {
   }, [JSON.stringify(allValues)])
 
   async function onSubmit(data: FormValues) {
-    const result = await submitAssessment(assessmentId, data)
-    if (result === 'synced') {
-      alert('Assessment submitted and synced to Google Sheets.')
-    } else {
-      alert('You appear to be offline. Assessment queued — it will sync automatically when you reconnect.')
-    }
+    await submitAssessment(assessmentId, data)
+    alert('Assessment saved.')
     onDone()
   }
 

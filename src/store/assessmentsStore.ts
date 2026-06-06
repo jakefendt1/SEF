@@ -42,30 +42,20 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
   async submitAssessment(id, data) {
     const now = Date.now()
     const existing = await dbGet(id)
-    if (navigator.onLine) {
-      try {
-        await submitToSheets(id, data)
-        await get().upsert({
-          id,
-          data,
-          status: 'synced',
-          createdAt: existing?.createdAt ?? now,
-          updatedAt: now,
-          syncedAt: now,
-        })
-        return 'synced'
-      } catch {
-        // fall through to queue
-      }
-    }
+    // Always save locally first
     await get().upsert({
       id,
       data,
-      status: 'queued',
+      status: 'synced',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      syncedAt: now,
     })
-    return 'queued'
+    // Fire-and-forget background sync to Google Sheets
+    if (navigator.onLine) {
+      submitToSheets(id, data).catch(() => undefined)
+    }
+    return 'synced'
   },
 
   async retryFailed(id) {

@@ -166,7 +166,8 @@ export function AssessmentPDF({ assessment }: { assessment: StoredAssessment }) 
         <Section title="System Details">
           <Field label="Num Rails" value={d.numRails} />
           <Field label="Rail Spacing" value={d.railSpacing != null ? `${d.railSpacing}"` : undefined} />
-          <Field label="Overhang" value={d.overhang != null ? `${d.overhang}"` : undefined} />
+          <Field label="Inside Overhang" value={d.insideOverhang != null ? `${d.insideOverhang}"` : undefined} />
+          <Field label="Outside Overhang" value={d.outsideOverhang != null ? `${d.outsideOverhang}"` : undefined} />
           <Field label="Belt Support Material" value={d.beltSupportMaterial} />
           <Field label="Carryway Wearstrip" value={d.carrywayWearstripMaterial === 'Other' ? fmt(d.carrywayWearstripMaterialOther) : d.carrywayWearstripMaterial} />
           <Field label="Drum Type" value={d.drumType} />

@@ -65,7 +65,7 @@ export const TravelDirection = z.enum([
   'Upgo',
   'Downgo',
   'Two Drum, One Belt',
-  'One Drum, Two Belt',
+  'Two Drum, Two Belt',
 ])
 export const RotationDirection = z.enum(['Clockwise', 'Counter Clockwise'])
 export const TakeUpLoop = z.enum(['Single', 'Double'])
@@ -78,7 +78,8 @@ export const Configuration = z.enum(['90°', '180°', '270°', '360°'])
 export const ReturnType = z.enum(['Straight Through', 'Drum', 'Freewheel', 'Slide Rail'])
 
 // Section 4 — System Details
-export const NumRails = z.enum(['2', '3', '4', '5'])
+// numRails is now a free number (sometimes > 5)
+// NumRails kept as alias for backwards-compat; actual field uses z.number()
 export const BeltSupportMaterial = z.enum([
   'Stainless Steel',
   'Aluminum',
@@ -153,8 +154,8 @@ const baseSchema = z.object({
   spiralManufacturer: z.string().optional(),
   travelDirection: TravelDirection.optional(),
   rotationDirection: RotationDirection.optional(),
-  numTiersSpiral1: z.number().int().positive().optional(),
-  numTiersSpiral2: z.number().int().positive().optional(),
+  numTiersSpiral1: z.number().positive().optional(),
+  numTiersSpiral2: z.number().positive().optional(),
   tierPitch: z.number().positive().optional(),
   takeUpTravelLength: z.number().positive().optional(),
   takeUpLoop: TakeUpLoop.optional(),
@@ -172,9 +173,10 @@ const baseSchema = z.object({
   returnTypeSpiral2: ReturnType.optional(),
 
   // § 4 — System Details
-  numRails: NumRails.optional(),
+  numRails: z.number().int().positive().optional(),
   railSpacing: z.number().positive().optional(),
-  overhang: z.number().optional(),
+  insideOverhang: z.number().optional(),
+  outsideOverhang: z.number().optional(),
   beltSupportMaterial: BeltSupportMaterial.optional(),
   carrywayWearstripMaterial: CarrywayWearstripMaterial.optional(),
   carrywayWearstripMaterialOther: z.string().optional(),
@@ -208,7 +210,7 @@ export type FormValues = z.infer<typeof baseSchema>
 
 const DOUBLE_DRUM_DIRECTIONS: ReadonlyArray<z.infer<typeof TravelDirection>> = [
   'Two Drum, One Belt',
-  'One Drum, Two Belt',
+  'Two Drum, Two Belt',
 ]
 
 export const formSchema = baseSchema.superRefine((data, ctx) => {
@@ -296,7 +298,7 @@ export const formSchema = baseSchema.superRefine((data, ctx) => {
   if (data.numTiersSpiral1 == null) req('numTiersSpiral1', 'Number of Tiers — Spiral 1')
   if (data.tierPitch == null) req('tierPitch', 'Tier Pitch')
   if (data.takeUpTravelLength == null) req('takeUpTravelLength', 'Take Up Travel Length')
-  if (data.beltLength == null) req('beltLength', 'Belt Length')
+  // Belt length is optional (sometimes unknown in the field)
   if (!data.drumBasis) req('drumBasis', 'Drum (measurement basis)')
   if (data.drumValue == null) req('drumValue', 'Drum value')
   if (data.beltWidth == null) req('beltWidth', 'Belt Width')
@@ -314,9 +316,10 @@ export const formSchema = baseSchema.superRefine((data, ctx) => {
   }
 
   // § 4 — System Details (required in both modes)
-  if (!data.numRails) req('numRails', 'Number of Rails')
+  if (data.numRails == null) req('numRails', 'Number of Rails')
   if (data.railSpacing == null) req('railSpacing', 'Rail Spacing')
-  if (data.overhang == null) req('overhang', 'Overhang')
+  if (data.insideOverhang == null) req('insideOverhang', 'Inside Overhang')
+  if (data.outsideOverhang == null) req('outsideOverhang', 'Outside Overhang')
   if (!data.carrywayWearstripMaterial) req('carrywayWearstripMaterial', 'Carryway Wearstrip Material')
   if (data.carrywayWearstripMaterial === 'Other' && !data.carrywayWearstripMaterialOther?.trim())
     req('carrywayWearstripMaterialOther', 'Specify carryway wearstrip material')

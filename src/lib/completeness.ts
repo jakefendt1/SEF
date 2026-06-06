@@ -7,10 +7,10 @@ const ALWAYS_REQUIRED: ReadonlyArray<keyof FormValues> = [
   'installationType', 'applicationType', 'productProcessed',
   'incomingProductTemp', 'beltSpeed',
   'spiralManufacturer', 'travelDirection', 'rotationDirection',
-  'numTiersSpiral1', 'tierPitch', 'takeUpTravelLength', 'beltLength',
+  'numTiersSpiral1', 'tierPitch', 'takeUpTravelLength',
   'drumBasis', 'drumValue', 'beltWidth', 'infeedLength', 'dischargeLength',
   'configurationSpiral1', 'returnTypeSpiral1',
-  'numRails', 'railSpacing', 'overhang',
+  'numRails', 'railSpacing', 'insideOverhang', 'outsideOverhang',
   'carrywayWearstripMaterial', 'drumType', 'cageBarCapMaterial',
 ]
 

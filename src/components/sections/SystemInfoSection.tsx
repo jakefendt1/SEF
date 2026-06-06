@@ -15,7 +15,7 @@ interface Props {
   isQuickMode: boolean
 }
 
-const TRAVEL_DIRECTIONS = ['Upgo', 'Downgo', 'Two Drum, One Belt', 'One Drum, Two Belt']
+const TRAVEL_DIRECTIONS = ['Upgo', 'Downgo', 'Two Drum, One Belt', 'Two Drum, Two Belt']
 const ROTATION_DIRECTIONS = ['Clockwise', 'Counter Clockwise']
 const TAKE_UP_LOOPS = ['Single', 'Double']
 const DRUM_BASES = ['Diameter', 'Radius', 'Overall System Diameter (including belt)']
@@ -96,9 +96,8 @@ export function SystemInfoSection({ control, isQuickMode }: Props) {
           <NumberField
             name="beltLength"
             control={control}
-            label="Belt Length"
+            label="Belt Length (if known)"
             unit="ft"
-            required
           />
           <NumberField
             name="minRollerDiameter"

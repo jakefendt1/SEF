@@ -15,8 +15,8 @@ describe('isSpiral2Applicable', () => {
     expect(isSpiral2Applicable('Two Drum, One Belt')).toBe(true)
   })
 
-  it('returns true for One Drum, Two Belt', () => {
-    expect(isSpiral2Applicable('One Drum, Two Belt')).toBe(true)
+  it('returns true for Two Drum, Two Belt', () => {
+    expect(isSpiral2Applicable('Two Drum, Two Belt')).toBe(true)
   })
 
   it('returns false for Upgo', () => {
@@ -101,8 +101,8 @@ describe('Spiral 2 field visibility', () => {
       expect(isFieldVisible(field, { travelDirection: 'Two Drum, One Belt' })).toBe(true)
     })
 
-    it(`${field} is visible for One Drum, Two Belt`, () => {
-      expect(isFieldVisible(field, { travelDirection: 'One Drum, Two Belt' })).toBe(true)
+    it(`${field} is visible for Two Drum, Two Belt`, () => {
+      expect(isFieldVisible(field, { travelDirection: 'Two Drum, Two Belt' })).toBe(true)
     })
 
     it(`${field} is hidden for Upgo`, () => {
@@ -193,8 +193,8 @@ describe('Quick-mode field partition', () => {
 
   it('System Details fields are in Quick mode', () => {
     const sysDetailFields: Array<keyof FormValues> = [
-      'numRails', 'railSpacing', 'overhang', 'carrywayWearstripMaterial',
-      'drumType', 'cageBarCapMaterial',
+      'numRails', 'railSpacing', 'insideOverhang', 'outsideOverhang',
+      'carrywayWearstripMaterial', 'drumType', 'cageBarCapMaterial',
     ]
     for (const f of sysDetailFields) {
       expect(isQuickModeField(f), `${f} should be Quick mode`).toBe(true)

@@ -1,22 +1,23 @@
 import { useState } from 'react'
 import { cn } from '../lib/utils'
 import { useAssessmentsStore } from '../store/assessmentsStore'
-// Lazy-load the PDF renderer so it doesn't inflate the initial bundle
-async function downloadPDF(a: import('../lib/db').StoredAssessment) {
+import { downloadSingleCSV, downloadAllCSV } from '../lib/csvExport'
+import type { StoredAssessment } from '../lib/db'
+
+async function downloadPDF(a: StoredAssessment) {
   const { downloadAssessmentPDF } = await import('../pdf/generatePDF')
   return downloadAssessmentPDF(a)
 }
-import type { StoredAssessment } from '../lib/db'
 
 interface Props {
   onNew: () => void
-  onResume: (id: string) => void
+  onEdit: (id: string) => void
 }
 
 const STATUS_LABELS: Record<StoredAssessment['status'], string> = {
   draft: 'Draft',
   queued: 'Queued',
-  synced: 'Synced',
+  synced: 'Saved',
   failed: 'Failed',
 }
 const STATUS_COLORS: Record<StoredAssessment['status'], string> = {
@@ -26,7 +27,7 @@ const STATUS_COLORS: Record<StoredAssessment['status'], string> = {
   failed: 'bg-red-100 text-red-700',
 }
 
-function AssessmentRow({ a, onResume }: { a: StoredAssessment; onResume: (id: string) => void }) {
+function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string) => void }) {
   const { retryFailed, deleteAssessment } = useAssessmentsStore()
   const [pdfLoading, setPdfLoading] = useState(false)
 
@@ -38,11 +39,7 @@ function AssessmentRow({ a, onResume }: { a: StoredAssessment; onResume: (id: st
 
   async function handlePDF() {
     setPdfLoading(true)
-    try {
-      await downloadPDF(a)
-    } finally {
-      setPdfLoading(false)
-    }
+    try { await downloadPDF(a) } finally { setPdfLoading(false) }
   }
 
   return (
@@ -58,20 +55,18 @@ function AssessmentRow({ a, onResume }: { a: StoredAssessment; onResume: (id: st
         <p className="text-xs text-gray-400 mt-1">{date}</p>
       </div>
       <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
-        {a.status === 'draft' && (
-          <button
-            onClick={() => onResume(a.id)}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-900 text-white hover:bg-blue-800 min-h-[32px]"
-          >
-            Resume
-          </button>
-        )}
+        <button
+          onClick={() => onEdit(a.id)}
+          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-900 text-white hover:bg-blue-800 min-h-[32px]"
+        >
+          {a.status === 'draft' ? 'Resume' : 'Edit'}
+        </button>
         {a.status === 'failed' && (
           <button
             onClick={() => retryFailed(a.id)}
             className="text-xs font-medium px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 min-h-[32px]"
           >
-            Retry
+            Retry Sync
           </button>
         )}
         <button
@@ -82,9 +77,13 @@ function AssessmentRow({ a, onResume }: { a: StoredAssessment; onResume: (id: st
           {pdfLoading ? 'Generating…' : 'PDF'}
         </button>
         <button
-          onClick={() => {
-            if (confirm('Delete this assessment?')) deleteAssessment(a.id)
-          }}
+          onClick={() => downloadSingleCSV(a)}
+          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 min-h-[32px]"
+        >
+          CSV
+        </button>
+        <button
+          onClick={() => { if (confirm('Delete this assessment?')) deleteAssessment(a.id) }}
           className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white text-gray-400 hover:text-red-500 min-h-[32px]"
         >
           Delete
@@ -94,7 +93,7 @@ function AssessmentRow({ a, onResume }: { a: StoredAssessment; onResume: (id: st
   )
 }
 
-export function AssessmentsList({ onNew, onResume }: Props) {
+export function AssessmentsList({ onNew, onEdit }: Props) {
   const { assessments } = useAssessmentsStore()
 
   return (
@@ -112,9 +111,17 @@ export function AssessmentsList({ onNew, onResume }: Props) {
           <p className="text-gray-400 text-xs mt-1">Tap New Assessment to begin.</p>
         </div>
       ) : (
-        assessments.map((a) => (
-          <AssessmentRow key={a.id} a={a} onResume={onResume} />
-        ))
+        <>
+          <button
+            onClick={() => downloadAllCSV(assessments)}
+            className="w-full h-10 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            Export All (CSV)
+          </button>
+          {assessments.map((a) => (
+            <AssessmentRow key={a.id} a={a} onEdit={onEdit} />
+          ))}
+        </>
       )}
     </div>
   )

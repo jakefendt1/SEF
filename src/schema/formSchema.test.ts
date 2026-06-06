@@ -28,9 +28,10 @@ const VALID_QUICK_CORE: Partial<FormValues> = {
   dischargeLength: 5,
   configurationSpiral1: '360°',
   returnTypeSpiral1: 'Drum',
-  numRails: '3',
+  numRails: 3,
   railSpacing: 4,
-  overhang: 1,
+  insideOverhang: 1,
+  outsideOverhang: 1,
   carrywayWearstripMaterial: 'UHMW',
   drumType: 'Solid',
   cageBarCapMaterial: 'UHMW',
@@ -199,11 +200,6 @@ describe('System Information required in both modes', () => {
     expect(hasErrorOn(data, 'spiralManufacturer')).toBe(true)
   })
 
-  it('fails without beltLength in quick mode', () => {
-    const data = { ...VALID_QUICK_CORE, beltLength: undefined }
-    expect(hasErrorOn(data, 'beltLength')).toBe(true)
-  })
-
   it('fails without drumBasis in full mode', () => {
     const data = { ...VALID_FULL_CORE, drumBasis: undefined }
     expect(hasErrorOn(data, 'drumBasis')).toBe(true)
@@ -297,10 +293,10 @@ describe('Spiral 2 fields required for double-drum travel direction', () => {
     expect(hasErrorOn(VALID_QUICK_CORE, 'distanceBetweenDrums')).toBe(false)
   })
 
-  it('triggers for One Drum, Two Belt as well', () => {
+  it('triggers for Two Drum, Two Belt as well', () => {
     const data = {
       ...VALID_QUICK_CORE,
-      travelDirection: 'One Drum, Two Belt' as const,
+      travelDirection: 'Two Drum, Two Belt' as const,
     }
     expect(hasErrorOn(data, 'numTiersSpiral2')).toBe(true)
   })

@@ -34,12 +34,12 @@ export default function App() {
     setView({ type: 'form', id })
   }
 
-  async function resumeAssessment(id: string) {
+  async function openAssessment(id: string) {
     const stored = await dbGet(id)
     setView({ type: 'form', id, initialData: stored?.data })
   }
 
-  const title = view.type === 'form' ? 'New Assessment' : 'Assessments'
+  const title = view.type === 'form' ? 'Assessment' : 'Assessments'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -57,7 +57,7 @@ export default function App() {
         {view.type === 'list' ? (
           <AssessmentsList
             onNew={startNewAssessment}
-            onResume={resumeAssessment}
+            onEdit={openAssessment}
           />
         ) : (
           <FormView
