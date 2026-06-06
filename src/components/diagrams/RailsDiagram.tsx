@@ -47,16 +47,16 @@ export function RailsDiagram() {
       <rect x={rail2X - railW / 2} y={railY} width={railW} height={railH}
         fill="#94a3b8" stroke="#475569" strokeWidth="1.5" rx="1" />
 
-      {/* "DRUM" side marker */}
-      <line x1={rail2X + 30} y1={beltY - 4} x2={rail2X + 30} y2={railY + railH + 4}
-        stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 3" />
-      <text x={rail2X + 34} y={beltY + 9} fontSize="8" fill="#64748b" fontWeight="600">DRUM</text>
-
-      {/* "COLUMN" side marker */}
+      {/* "DRUM" side marker — inside/left (drum is on the inside of the spiral) */}
       <line x1={rail1X - 30} y1={beltY - 4} x2={rail1X - 30} y2={railY + railH + 4}
         stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 3" />
       <text x={rail1X - 32} y={beltY + 9} fontSize="8" fill="#64748b" fontWeight="600"
-        textAnchor="end">COLUMN</text>
+        textAnchor="end">DRUM</text>
+
+      {/* "COLUMN" side marker — outside/right (column is on the outside of the spiral) */}
+      <line x1={rail2X + 30} y1={beltY - 4} x2={rail2X + 30} y2={railY + railH + 4}
+        stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 3" />
+      <text x={rail2X + 34} y={beltY + 9} fontSize="8" fill="#64748b" fontWeight="600">COLUMN</text>
 
       {/* INSIDE OVERHANG: belt left edge → inner rail left edge */}
       <line x1={beltL} y1={dimY} x2={rail1X - railW / 2} y2={dimY}
