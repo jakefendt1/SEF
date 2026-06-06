@@ -137,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Write header row on first use (if sheet is empty)
     const existing = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: 'Submissions!A1',
+      range: 'Sheet1!A1',
     }).catch(() => null)
 
     const hasHeader = (existing?.data?.values?.length ?? 0) > 0
@@ -175,7 +175,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ]
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
-        range: 'Submissions!A1',
+        range: 'Sheet1!A1',
         valueInputOption: 'RAW',
         requestBody: { values: [headers] },
       })
@@ -183,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Submissions!A:A',
+      range: 'Sheet1',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [toSheetRow(id, data)] },
     })
