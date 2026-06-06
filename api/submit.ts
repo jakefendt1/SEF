@@ -119,14 +119,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { id, data } = req.body as { id?: string; data?: Record<string, unknown> }
   if (!id || !data) return res.status(400).json({ error: 'Missing id or data' })
 
-  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  const sheetId = process.env.GOOGLE_SHEET_ID
+  const bom = /^﻿/
+  const keyJson = (process.env.GOOGLE_SERVICE_ACCOUNT_KEY ?? '').replace(bom, '')
+  const sheetId = (process.env.GOOGLE_SHEET_ID ?? '').replace(bom, '').trim()
   if (!keyJson || !sheetId) {
     return res.status(500).json({ error: 'Server not configured (missing env vars)' })
   }
 
   try {
-    const credentials = JSON.parse(keyJson.replace(/^﻿/, ''))
+    const credentials = JSON.parse(keyJson)
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
