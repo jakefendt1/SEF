@@ -9,6 +9,7 @@ import { SelectField } from '../fields/SelectField'
 import { TextField } from '../fields/TextField'
 import { DimensionField } from '../fields/DimensionField'
 import { CageBarDiagram } from '../diagrams/CageBarDiagram'
+import { RailsDiagram } from '../diagrams/RailsDiagram'
 
 interface Props {
   control: Control<FormValues>
@@ -37,11 +38,7 @@ export function SystemDetailsSection({ control, isQuickMode }: Props) {
         <>
           {/* Rails and overhang reference diagram */}
           <div className="mt-1 mb-1">
-            <img
-              src="/diagrams/rails-and-structure.png"
-              alt="Diagram showing column, drum, rails, overhang, and rail spacing"
-              className="w-full max-w-sm mx-auto rounded border border-gray-100"
-            />
+            <RailsDiagram />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

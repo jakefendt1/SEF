@@ -9,6 +9,7 @@ import { RadioGroupField } from '../fields/RadioGroupField'
 import { SelectField } from '../fields/SelectField'
 import { DrumDiagram } from '../diagrams/DrumDiagram'
 import { ConfigDiagram } from '../diagrams/ConfigDiagram'
+import { TakeUpLoopDiagram } from '../diagrams/TakeUpLoopDiagram'
 
 interface Props {
   control: Control<FormValues>
@@ -57,11 +58,7 @@ export function SystemInfoSection({ control, isQuickMode }: Props) {
 
           {/* Take-up loop reference diagram */}
           <div className="mt-1 mb-1">
-            <img
-              src="/diagrams/take-up-loop.png"
-              alt="Diagram showing Number of Tiers, Tier Pitch, and Take Up Travel"
-              className="w-full max-w-sm mx-auto rounded border border-gray-100"
-            />
+            <TakeUpLoopDiagram />
           </div>
 
           {/* Tier counts */}
