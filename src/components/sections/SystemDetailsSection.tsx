@@ -35,6 +35,15 @@ export function SystemDetailsSection({ control, isQuickMode }: Props) {
     <SectionCard title="System Details" isQuickMode={isQuickMode}>
       {() => (
         <>
+          {/* Rails and overhang reference diagram */}
+          <div className="mt-1 mb-1">
+            <img
+              src="/diagrams/rails-and-structure.png"
+              alt="Diagram showing column, drum, rails, overhang, and rail spacing"
+              className="w-full max-w-sm mx-auto rounded border border-gray-100"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <NumberField
               name="numRails"

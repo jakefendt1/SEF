@@ -23,9 +23,9 @@ const CONFIGURATIONS = ['90°', '180°', '270°', '360°']
 const RETURN_TYPES = ['Straight Through', 'Drum', 'Freewheel', 'Slide Rail']
 
 export function SystemInfoSection({ control, isQuickMode }: Props) {
-  const [travelDirection, drumBasis, configSpiral1, configSpiral2] = useWatch({
+  const [travelDirection, drumBasis] = useWatch({
     control,
-    name: ['travelDirection', 'drumBasis', 'configurationSpiral1', 'configurationSpiral2'],
+    name: ['travelDirection', 'drumBasis'],
   })
   const isSpiral2 = isSpiral2Applicable(travelDirection as string | undefined)
 
@@ -54,6 +54,15 @@ export function SystemInfoSection({ control, isQuickMode }: Props) {
             options={ROTATION_DIRECTIONS}
             required
           />
+
+          {/* Take-up loop reference diagram */}
+          <div className="mt-1 mb-1">
+            <img
+              src="/diagrams/take-up-loop.png"
+              alt="Diagram showing Number of Tiers, Tier Pitch, and Take Up Travel"
+              className="w-full max-w-sm mx-auto rounded border border-gray-100"
+            />
+          </div>
 
           {/* Tier counts */}
           <div className="grid grid-cols-2 gap-3">
@@ -106,22 +115,18 @@ export function SystemInfoSection({ control, isQuickMode }: Props) {
             unit="in"
           />
 
-          {/* Drum basis with diagram */}
-          <div>
-            <RadioGroupField
-              name="drumBasis"
-              control={control}
-              label="Drum (Measurement Basis)"
-              options={DRUM_BASES}
-              required
-            />
-            {drumBasis && (
-              <div className="mt-3 flex justify-center">
-                <DrumDiagram basis={drumBasis as 'Diameter' | 'Radius'} />
-              </div>
-            )}
+          {/* Drum reference diagram */}
+          <div className="mt-1 mb-1">
+            <DrumDiagram />
           </div>
 
+          <RadioGroupField
+            name="drumBasis"
+            control={control}
+            label="Drum (Measurement Basis)"
+            options={DRUM_BASES}
+            required
+          />
           <NumberField
             name="drumValue"
             control={control}
@@ -151,22 +156,18 @@ export function SystemInfoSection({ control, isQuickMode }: Props) {
             />
           )}
 
-          {/* Spiral 1 configuration with diagram */}
-          <div>
-            <RadioGroupField
-              name="configurationSpiral1"
-              control={control}
-              label={isSpiral2 ? 'Configuration — Spiral 1' : 'Configuration'}
-              options={CONFIGURATIONS}
-              required
-            />
-            {configSpiral1 && (
-              <div className="mt-3 flex justify-center">
-                <ConfigDiagram value={configSpiral1 as string} />
-              </div>
-            )}
+          {/* Configuration reference diagram */}
+          <div className="mt-1 mb-1">
+            <ConfigDiagram />
           </div>
 
+          <RadioGroupField
+            name="configurationSpiral1"
+            control={control}
+            label={isSpiral2 ? 'Configuration — Spiral 1' : 'Configuration'}
+            options={CONFIGURATIONS}
+            required
+          />
           <SelectField
             name="returnTypeSpiral1"
             control={control}
@@ -175,23 +176,15 @@ export function SystemInfoSection({ control, isQuickMode }: Props) {
             required
           />
 
-          {/* Spiral 2 fields */}
           {isSpiral2 && (
             <>
-              <div>
-                <RadioGroupField
-                  name="configurationSpiral2"
-                  control={control}
-                  label="Configuration — Spiral 2"
-                  options={CONFIGURATIONS}
-                  required
-                />
-                {configSpiral2 && (
-                  <div className="mt-3 flex justify-center">
-                    <ConfigDiagram value={configSpiral2 as string} />
-                  </div>
-                )}
-              </div>
+              <RadioGroupField
+                name="configurationSpiral2"
+                control={control}
+                label="Configuration — Spiral 2"
+                options={CONFIGURATIONS}
+                required
+              />
               <SelectField
                 name="returnTypeSpiral2"
                 control={control}
