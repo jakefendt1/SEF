@@ -126,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const credentials = JSON.parse(keyJson)
+    const credentials = JSON.parse(keyJson.replace(/^﻿/, ''))
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
