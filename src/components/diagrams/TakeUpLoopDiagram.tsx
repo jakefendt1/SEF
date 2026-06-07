@@ -1,10 +1,10 @@
+import { DiagramLightbox } from './DiagramLightbox'
+
 export function TakeUpLoopDiagram() {
   return (
-    <img
+    <DiagramLightbox
       src="/diagrams/takeuploop.png"
-      alt="Take up loop diagram showing tier pitch, take up travel, and number of tiers"
-      className="w-full max-w-sm mx-auto block rounded"
-      style={{ filter: 'contrast(1.2) brightness(0.97)' }}
+      alt="Take up loop — tier pitch, take up travel, number of tiers"
     />
   )
 }
