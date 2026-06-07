@@ -108,9 +108,7 @@ export function SystemDetailsSection({ control, isQuickMode }: Props) {
           />
           {drumType === 'Cage' && (
             <>
-              <div className="flex justify-center py-2">
-                <CageBarDiagram />
-              </div>
+              <CageBarDiagram />
               <DimensionField
                 dims={[
                   { name: 'cageBarDimA', label: 'A' },

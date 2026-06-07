@@ -18,50 +18,58 @@ export function DiagramLightbox({ src, alt, label }: Props) {
 
   return (
     <>
+      {/* Trigger button */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-blue-300 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-900 font-semibold text-base transition-colors"
       >
-        <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+        {/* Magnifier + plus icon */}
+        <svg className="w-6 h-6 shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <circle cx="11" cy="11" r="7.5" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" strokeLinecap="round" />
+          <line x1="11" y1="8" x2="11" y2="14" strokeLinecap="round" />
+          <line x1="8" y1="11" x2="14" y2="11" strokeLinecap="round" />
         </svg>
-        <span>{label}</span>
-        <svg className="w-3.5 h-3.5 ml-auto shrink-0 opacity-60" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-        </svg>
+        <span className="flex-1 text-left leading-snug">{label}</span>
+        <span className="text-sm font-normal text-blue-500 shrink-0">Tap to view</span>
       </button>
 
+      {/* Full-screen overlay */}
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 sticky top-0 bg-white rounded-t-xl">
-              <span className="font-semibold text-gray-800 text-sm">{label}</span>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none"
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-4">
-              <img
-                src={src}
-                alt={alt}
-                className="w-full rounded"
-                style={{ filter: 'contrast(1.25) brightness(0.96)' }}
-              />
-            </div>
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white shrink-0">
+            <span className="font-bold text-base leading-snug pr-4">{label}</span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/35 text-white text-3xl font-bold leading-none shrink-0"
+              aria-label="Close"
+            >
+              ×
+            </button>
           </div>
+
+          {/* Image — scrollable, fills screen width */}
+          <div className="flex-1 overflow-auto bg-gray-50">
+            <img
+              src={src}
+              alt={alt}
+              className="w-full block"
+              style={{ filter: 'contrast(1.3) brightness(0.95)' }}
+            />
+          </div>
+
+          {/* Bottom close bar — easy thumb reach */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="w-full py-5 bg-[#1e3a5f] text-white font-bold text-lg tracking-wide shrink-0"
+          >
+            ✕  Close
+          </button>
         </div>
       )}
     </>
