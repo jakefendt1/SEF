@@ -5,6 +5,7 @@ export function CageBarDiagram() {
     <DiagramLightbox
       src="/diagrams/cagebar.png"
       alt="Cage bar dimensions (A, B, C) and cap profiles — Trapezoidal, Flat, Ribbed, Winged"
+      label="Cage Bar Dimensions & Cap Profiles"
     />
   )
 }

@@ -5,6 +5,7 @@ export function RailsDiagram() {
     <DiagramLightbox
       src="/diagrams/rails.png"
       alt="Rail cross-section — column side, drum side, overhang, rail spacing"
+      label="Rail Spacing & Overhang Diagram"
     />
   )
 }

@@ -5,6 +5,7 @@ export function DrumDiagram() {
     <DiagramLightbox
       src="/diagrams/drum.png"
       alt="Drum measurement diagram — radius, drum diameter, overall system diameter, infeed/discharge legs"
+      label="Drum Measurement Reference"
     />
   )
 }
