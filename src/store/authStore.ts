@@ -38,35 +38,51 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   magicLinkSent: false,
 
   init() {
-    // If this page load is the magic-link callback, complete sign-in first
     if (isSignInWithEmailLink(auth, window.location.href)) {
       get().completeMagicLink()
-      return
+      // fall through so onAuthStateChanged is still subscribed
     }
 
-    onAuthStateChanged(auth, async (user) => {
+    let timeout: ReturnType<typeof setTimeout>
+
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      clearTimeout(timeout)
       if (!user) {
         set({ user: null, profile: null, role: null, loading: false })
         return
       }
-      const profileRef = doc(db, 'users', user.uid)
-      const snap = await getDoc(profileRef)
+      try {
+        const profileRef = doc(db, 'users', user.uid)
+        const snap = await getDoc(profileRef)
 
-      let profile: UserProfile
-      if (snap.exists()) {
-        profile = snap.data() as UserProfile
-      } else {
-        // First sign-in — create an IC profile automatically
-        profile = {
+        let profile: UserProfile
+        if (snap.exists()) {
+          profile = snap.data() as UserProfile
+        } else {
+          profile = {
+            email: user.email!,
+            displayName: user.email!.split('@')[0],
+            role: 'ic',
+          }
+          await setDoc(profileRef, { ...profile, createdAt: serverTimestamp() })
+        }
+        set({ user, profile, role: profile.role, loading: false })
+      } catch (err) {
+        console.error('Profile load failed:', err)
+        const profile: UserProfile = {
           email: user.email!,
           displayName: user.email!.split('@')[0],
           role: 'ic',
         }
-        await setDoc(profileRef, { ...profile, createdAt: serverTimestamp() })
+        set({ user, profile, role: 'ic', loading: false })
       }
-
-      set({ user, profile, role: profile.role, loading: false })
     })
+
+    // Hard fallback — if Firebase never fires, unblock the UI after 8s
+    timeout = setTimeout(() => {
+      unsub()
+      set({ user: null, profile: null, role: null, loading: false })
+    }, 8000)
   },
 
   async sendMagicLink(email) {
