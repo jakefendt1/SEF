@@ -60,7 +60,7 @@ export default function App() {
               </span>
               <button
                 type="button"
-                onClick={signOut}
+                onClick={() => { if (confirm('Sign out?')) signOut() }}
                 className="text-xs text-blue-300 hover:text-white border border-blue-500 hover:border-white rounded px-2 py-1"
               >
                 Sign out

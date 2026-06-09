@@ -1,13 +1,20 @@
 import { create } from 'zustand'
 import {
   onAuthStateChanged,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as fbSignOut,
   type User,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  collection,
+  serverTimestamp,
+} from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 
 export type UserRole = 'ic' | 'admin'
@@ -23,26 +30,23 @@ interface AuthStore {
   profile: UserProfile | null
   role: UserRole | null
   loading: boolean
-  magicLinkSent: boolean
+  allUsers: UserProfile[]
   init: () => void
-  sendMagicLink: (email: string) => Promise<void>
-  completeMagicLink: () => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
+  createAccount: (name: string, email: string, password: string) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+  loadAllUsers: () => Promise<void>
   signOut: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   profile: null,
   role: null,
   loading: true,
-  magicLinkSent: false,
+  allUsers: [],
 
   init() {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      get().completeMagicLink()
-      // fall through so onAuthStateChanged is still subscribed
-    }
-
     let timeout: ReturnType<typeof setTimeout>
 
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -85,34 +89,41 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }, 8000)
   },
 
-  async sendMagicLink(email) {
-    await sendSignInLinkToEmail(auth, email, {
-      url: window.location.origin,
-      handleCodeInApp: true,
-    })
-    localStorage.setItem('emailForSignIn', email)
-    set({ magicLinkSent: true })
+  async signIn(email, password) {
+    await signInWithEmailAndPassword(auth, email, password)
+    // onAuthStateChanged handles state update
   },
 
-  async completeMagicLink() {
-    let email = localStorage.getItem('emailForSignIn')
-    if (!email) {
-      // Link opened on a different device — ask for email in UI
-      set({ loading: false })
-      return
+  async createAccount(name, email, password) {
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    const profile: UserProfile = {
+      email,
+      displayName: name.trim(),
+      role: 'ic',
     }
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      ...profile,
+      createdAt: serverTimestamp(),
+    })
+    // onAuthStateChanged fires and sets user/profile state
+  },
+
+  async resetPassword(email) {
+    await sendPasswordResetEmail(auth, email)
+  },
+
+  async loadAllUsers() {
     try {
-      await signInWithEmailLink(auth, email, window.location.href)
-      localStorage.removeItem('emailForSignIn')
-      window.history.replaceState({}, document.title, window.location.pathname)
+      const snap = await getDocs(collection(db, 'users'))
+      const users = snap.docs.map(d => d.data() as UserProfile)
+      set({ allUsers: users })
     } catch (err) {
-      console.error('Magic link sign-in failed:', err)
-      set({ loading: false })
+      console.error('loadAllUsers failed:', err)
     }
   },
 
   async signOut() {
     await fbSignOut(auth)
-    set({ user: null, profile: null, role: null })
+    set({ user: null, profile: null, role: null, allUsers: [] })
   },
 }))

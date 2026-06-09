@@ -2,15 +2,39 @@ import { useEffect, useState } from 'react'
 import intraloxLogo from '../assets/intralox-logo.svg'
 import { useAuthStore } from '../store/authStore'
 
+type Mode = 'signin' | 'create' | 'reset'
+
+function friendlyError(msg: string): string {
+  if (msg.includes('invalid-credential') || msg.includes('wrong-password') || msg.includes('user-not-found')) {
+    return 'Incorrect email or password.'
+  }
+  if (msg.includes('email-already-in-use')) {
+    return 'An account with this email already exists.'
+  }
+  if (msg.includes('weak-password')) {
+    return 'Password must be at least 6 characters.'
+  }
+  if (msg.includes('invalid-email')) {
+    return 'Please enter a valid email address.'
+  }
+  if (msg.includes('too-many-requests')) {
+    return 'Too many attempts. Try again later.'
+  }
+  return 'Something went wrong. Please try again.'
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading, magicLinkSent, init, sendMagicLink } = useAuthStore()
+  const { user, loading, init, signIn, createAccount, resetPassword } = useAuthStore()
+  const [mode, setMode] = useState<Mode>('signin')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [sending, setSending] = useState(false)
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [resetSent, setResetSent] = useState(false)
 
   useEffect(() => { init() }, [init])
 
-  // Still resolving cached auth token
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -19,22 +43,45 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Signed in — show the app
   if (user) return <>{children}</>
 
-  // Not signed in — show sign-in screen
+  function switchMode(next: Mode) {
+    setMode(next)
+    setName('')
+    setEmail('')
+    setPassword('')
+    setError('')
+    setResetSent(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
-    setSending(true)
+    setBusy(true)
     setError('')
     try {
-      await sendMagicLink(email.trim().toLowerCase())
+      if (mode === 'signin') {
+        await signIn(email.trim(), password)
+      } else if (mode === 'create') {
+        await createAccount(name, email.trim().toLowerCase(), password)
+      } else {
+        await resetPassword(email.trim().toLowerCase())
+        setResetSent(true)
+        setBusy(false)
+        return
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send link. Try again.')
-      setSending(false)
+      setError(friendlyError(err instanceof Error ? err.message : ''))
     }
+    setBusy(false)
   }
+
+  const submitLabel = busy
+    ? '…'
+    : mode === 'signin'
+    ? 'Sign in →'
+    : mode === 'create'
+    ? 'Create account →'
+    : 'Send reset link →'
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6">
@@ -43,47 +90,124 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-2">
           <img src={intraloxLogo} alt="Intralox" className="h-10 w-auto" />
           <h1 className="text-xl font-bold text-gray-900">Spiral Eval</h1>
-          <p className="text-sm text-gray-500">Sign in to continue</p>
+          <p className="text-sm text-gray-500">
+            {mode === 'signin' ? 'Sign in to continue'
+              : mode === 'create' ? 'Create your account'
+              : 'Reset your password'}
+          </p>
         </div>
 
-        {magicLinkSent ? (
+        {mode === 'reset' && resetSent ? (
           <div className="text-center space-y-3 py-2">
-            <div className="text-5xl">📬</div>
-            <p className="font-semibold text-gray-800 text-lg">Check your email</p>
+            <p className="font-semibold text-gray-800">Check your email</p>
             <p className="text-sm text-gray-500 leading-relaxed">
-              We sent a sign-in link to{' '}
+              A reset link was sent to{' '}
               <span className="font-medium text-gray-700">{email}</span>.
-              Tap the link in your email — it'll open the app automatically.
             </p>
-            <p className="text-xs text-gray-400">Open the link on this device.</p>
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className="text-sm text-blue-700 hover:underline"
+            >
+              Back to sign in
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === 'create' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Your name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Jane Smith"
+                  required
+                  autoComplete="name"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Your Intralox email
+                Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@intralox.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
                 autoCapitalize="off"
                 autoComplete="email"
                 inputMode="email"
+                className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {mode !== 'reset' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
             {error && <p className="text-sm text-red-600">{error}</p>}
+
             <button
               type="submit"
-              disabled={sending || !email.trim()}
+              disabled={busy}
               className="w-full bg-[#1e3a5f] text-white font-semibold py-3.5 rounded-xl text-base disabled:opacity-40"
             >
-              {sending ? 'Sending…' : 'Send sign-in link →'}
+              {submitLabel}
             </button>
           </form>
         )}
+
+        <div className="text-center text-sm space-y-2 pt-1">
+          {mode === 'signin' && (
+            <>
+              <button
+                type="button"
+                onClick={() => switchMode('reset')}
+                className="block w-full text-gray-400 hover:text-gray-600"
+              >
+                Forgot password?
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('create')}
+                className="text-blue-700 hover:underline font-medium"
+              >
+                Create account
+              </button>
+            </>
+          )}
+          {(mode === 'create' || mode === 'reset') && !resetSent && (
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className="text-blue-700 hover:underline"
+            >
+              Back to sign in
+            </button>
+          )}
+        </div>
+
       </div>
     </div>
   )
