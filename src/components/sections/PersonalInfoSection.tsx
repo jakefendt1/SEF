@@ -19,6 +19,7 @@ export function PersonalInfoSection({ control, isQuickMode }: Props) {
         <>
           <TextField name="name" control={control} label="Name" required />
           <TextField name="companyName" control={control} label="Company Name" required />
+          <TextField name="systemName" control={control} label="System Name" />
           <TextField name="email" control={control} label="Email" required type="email" />
           <TextField name="phone" control={control} label="Phone" type="tel" />
 

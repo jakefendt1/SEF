@@ -111,6 +111,8 @@ function toSheetRow(id: string, data: Record<string, unknown>): (string | number
     str(data.endUserCity),
     str(data.endUserState),
     str(data.lineId),
+    // Appended after initial launch — kept at the end so existing sheet columns don't shift
+    str(data.systemName),
   ]
 }
 
@@ -173,6 +175,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Top Tier Hold Down', 'Return Path Hold Down', 'Product Containment Rail',
         'Num VFDs',
         'Project #', 'End User Name', 'End User City', 'End User State', 'Line ID',
+        'System Name',
       ]
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,

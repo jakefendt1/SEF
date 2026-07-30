@@ -3,7 +3,7 @@ import type { StoredAssessment } from './db'
 const HEADERS = [
   'Assessment ID', 'Created At', 'Status', 'Mode',
   // § 1 Personal Info
-  'Name', 'Title', 'Email', 'Phone', 'Company Name', 'Country/Region',
+  'Name', 'Title', 'Email', 'Phone', 'Company Name', 'System Name', 'Country/Region',
   'Address', 'City', 'State/Province', 'Zip/Postal Code',
   // § 2 Application
   'Installation Type', 'Application Type', 'App Type (Other)',
@@ -56,7 +56,7 @@ function toRow(a: StoredAssessment): string[] {
     new Date(a.createdAt).toISOString(),
     a.status,
     str('mode'),
-    str('name'), str('title'), str('email'), str('phone'), str('companyName'), str('countryOrRegion'),
+    str('name'), str('title'), str('email'), str('phone'), str('companyName'), str('systemName'), str('countryOrRegion'),
     str('address'), str('city'), str('stateProvince'), str('zipPostalCode'),
     str('installationType'), str('applicationType'), str('applicationTypeOther'),
     str('productProcessed'), str('howProductCarried'),

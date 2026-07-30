@@ -94,6 +94,7 @@ export function AssessmentPDF({ assessment }: { assessment: StoredAssessment }) 
         <Section title="Personal Info">
           <Field label="Name" value={d.name} />
           <Field label="Company" value={d.companyName} />
+          <Field label="System Name" value={d.systemName} />
           <Field label="Email" value={d.email} />
           <Field label="Phone" value={d.phone} />
           <Field label="Title" value={d.title} />
