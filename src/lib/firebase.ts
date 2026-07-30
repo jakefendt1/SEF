@@ -19,4 +19,5 @@ setPersistence(auth, browserLocalPersistence).catch(console.error)
 // Offline persistence — all reads/writes are cached in IndexedDB
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache(),
+  ignoreUndefinedProperties: true,
 })

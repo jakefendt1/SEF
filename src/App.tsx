@@ -6,7 +6,7 @@ import { InstallPrompt } from './components/InstallPrompt'
 import { AuthGate } from './components/AuthGate'
 import { useAssessmentsStore } from './store/assessmentsStore'
 import { useAuthStore } from './store/authStore'
-import { dbGet } from './lib/db'
+import { migrateLegacyAssessmentsForUser } from './lib/migrateLegacyAssessments'
 import type { FormValues } from './schema/formSchema'
 
 type View =
@@ -15,13 +15,18 @@ type View =
 
 export default function App() {
   const [view, setView] = useState<View>({ type: 'list' })
-  const { load, flushQueue } = useAssessmentsStore()
-  const { profile, signOut } = useAuthStore()
+  const { assessments, subscribe, unsubscribe, flushQueue } = useAssessmentsStore()
+  const { user, profile, signOut } = useAuthStore()
 
-  // Load assessments from IDB on mount
+  // Migrate legacy local drafts, then subscribe to this user's cloud assessments
   useEffect(() => {
-    load()
-  }, [load])
+    const uid = user?.uid
+    if (!uid) return
+    migrateLegacyAssessmentsForUser(uid)
+      .catch((err) => console.error('[migrateLegacyAssessments]', err))
+      .finally(() => subscribe(uid))
+    return () => unsubscribe()
+  }, [user?.uid, subscribe, unsubscribe])
 
   // Flush queued submissions when we come back online
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function App() {
   }
 
   async function openAssessment(id: string) {
-    const stored = await dbGet(id)
+    const stored = assessments.find((a) => a.id === id)
     setView({ type: 'form', id, initialData: stored?.data })
   }
 
@@ -81,10 +86,7 @@ export default function App() {
             <FormView
               assessmentId={view.id}
               initialData={view.initialData}
-              onDone={() => {
-                load()
-                setView({ type: 'list' })
-              }}
+              onDone={() => setView({ type: 'list' })}
             />
           )}
         </main>

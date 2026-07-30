@@ -1,11 +1,18 @@
 import { create } from 'zustand'
-import { dbGetAll, dbPut, dbGet, dbDelete, type StoredAssessment } from '../lib/db'
+import type { StoredAssessment } from '../lib/db'
+import {
+  putAssessment,
+  deleteAssessmentDoc,
+  subscribeAssessments,
+} from '../lib/firestoreAssessments'
 import { submitToSheets } from '../lib/api'
 import type { FormValues } from '../schema/formSchema'
 
 interface Store {
+  uid: string | null
   assessments: StoredAssessment[]
-  load: () => Promise<void>
+  subscribe: (uid: string) => void
+  unsubscribe: () => void
   upsert: (a: StoredAssessment) => Promise<void>
   saveDraft: (id: string, data: Partial<FormValues>) => Promise<void>
   submitAssessment: (id: string, data: FormValues) => Promise<'synced' | 'queued'>
@@ -14,22 +21,35 @@ interface Store {
   deleteAssessment: (id: string) => Promise<void>
 }
 
+let unsub: (() => void) | null = null
+
 export const useAssessmentsStore = create<Store>((set, get) => ({
+  uid: null,
   assessments: [],
 
-  async load() {
-    const all = await dbGetAll()
-    set({ assessments: all.sort((a, b) => b.updatedAt - a.updatedAt) })
+  subscribe(uid) {
+    if (get().uid === uid && unsub) return
+    unsub?.()
+    set({ uid, assessments: [] })
+    unsub = subscribeAssessments(uid, (assessments) => set({ assessments }))
+  },
+
+  unsubscribe() {
+    unsub?.()
+    unsub = null
+    set({ uid: null, assessments: [] })
   },
 
   async upsert(a) {
-    await dbPut(a)
-    await get().load()
+    const { uid } = get()
+    if (!uid) return
+    await putAssessment(uid, a)
   },
 
   async saveDraft(id, data) {
+    const { assessments } = get()
     const now = Date.now()
-    const existing = await dbGet(id)
+    const existing = assessments.find((a) => a.id === id)
     await get().upsert({
       id,
       data,
@@ -40,26 +60,35 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
   },
 
   async submitAssessment(id, data) {
+    const { assessments } = get()
     const now = Date.now()
-    const existing = await dbGet(id)
-    // Always save locally first
-    await get().upsert({
+    const existing = assessments.find((a) => a.id === id)
+    const base: StoredAssessment = {
       id,
       data,
-      status: 'synced',
+      status: 'queued',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-      syncedAt: now,
-    })
-    // Fire-and-forget background sync to Google Sheets
-    if (navigator.onLine) {
-      submitToSheets(id, data).catch(() => undefined)
     }
-    return 'synced'
+
+    if (!navigator.onLine) {
+      await get().upsert(base)
+      return 'queued'
+    }
+
+    try {
+      await submitToSheets(id, data)
+      await get().upsert({ ...base, status: 'synced', syncedAt: now })
+      return 'synced'
+    } catch {
+      await get().upsert({ ...base, status: 'failed' })
+      return 'queued'
+    }
   },
 
   async retryFailed(id) {
-    const a = await dbGet(id)
+    const { assessments } = get()
+    const a = assessments.find((x) => x.id === id)
     if (!a || a.status !== 'failed') return
     try {
       await submitToSheets(a.id, a.data as FormValues)
@@ -82,7 +111,8 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
   },
 
   async deleteAssessment(id) {
-    await dbDelete(id)
-    await get().load()
+    const { uid } = get()
+    if (!uid) return
+    await deleteAssessmentDoc(uid, id)
   },
 }))
