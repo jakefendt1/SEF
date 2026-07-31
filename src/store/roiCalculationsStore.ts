@@ -9,6 +9,9 @@ import {
 interface Store {
   uid: string | null
   calculations: StoredRoiCalculation[]
+  /** False until the first snapshot arrives. An empty list means "none saved"
+   *  only once this is true -- before that it just means "not back yet". */
+  loaded: boolean
   subscribe: (uid: string) => void
   unsubscribe: () => void
   save: (calc: StoredRoiCalculation) => Promise<void>
@@ -20,18 +23,21 @@ let unsub: (() => void) | null = null
 export const useRoiCalculationsStore = create<Store>((set, get) => ({
   uid: null,
   calculations: [],
+  loaded: false,
 
   subscribe(uid) {
     if (get().uid === uid && unsub) return
     unsub?.()
-    set({ uid, calculations: [] })
-    unsub = subscribeRoiCalculations(uid, (calculations) => set({ calculations }))
+    set({ uid, calculations: [], loaded: false })
+    unsub = subscribeRoiCalculations(uid, (calculations) =>
+      set({ calculations, loaded: true }),
+    )
   },
 
   unsubscribe() {
     unsub?.()
     unsub = null
-    set({ uid: null, calculations: [] })
+    set({ uid: null, calculations: [], loaded: false })
   },
 
   async save(calc) {

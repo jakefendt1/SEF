@@ -12,19 +12,21 @@ interface ToolCardProps {
 
 export function ToolCard({ title, description, icon: Icon, href }: ToolCardProps) {
   return (
-    <Link href={href} className="block group">
-      <Card className="h-full transition-shadow hover:shadow-md hover:border-primary/40">
+    <Link href={href} className="block">
+      <Card className="h-full transition-shadow hover:shadow-md hover:border-primary/40 active:bg-accent">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary shrink-0">
-              <Icon className="size-5" aria-hidden="true" />
+            <div className="flex items-center justify-center size-12 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Icon className="size-6" aria-hidden="true" />
             </div>
-            <CardTitle className="text-base">{title}</CardTitle>
+            <CardTitle className="text-lg">{title}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{description}</p>
-          <p className="mt-4 text-sm font-medium text-primary flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <p className="text-base text-muted-foreground">{description}</p>
+          {/* Always visible: a hover-only affordance is permanently invisible
+              on the iPads these get used on. */}
+          <p className="mt-4 text-base font-semibold text-primary flex items-center gap-1">
             Open <ArrowRight className="size-4" aria-hidden="true" />
           </p>
         </CardContent>

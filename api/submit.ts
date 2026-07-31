@@ -122,7 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { id, data } = req.body as { id?: string; data?: Record<string, unknown> }
   if (!id || !data) return res.status(400).json({ error: 'Missing id or data' })
 
-  const bom = /^﻿/
+  // U+FEFF. Written as an escape, not the literal character, which is invisible in an editor and trips no-irregular-whitespace.
+  const bom = new RegExp('^\uFEFF')
   const keyJson = (process.env.GOOGLE_SERVICE_ACCOUNT_KEY ?? '').replace(bom, '')
   const sheetId = (process.env.GOOGLE_SHEET_ID ?? '').replace(bom, '').trim()
   if (!keyJson || !sheetId) {

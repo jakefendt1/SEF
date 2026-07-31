@@ -1,28 +1,43 @@
 // Custom hook for AIM Glide Calculator state management
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   type CalculatorInputs,
   type SavedCalculation,
-  DEFAULT_INPUTS,
+  EXAMPLE_INPUTS,
   CLEARED_INPUTS,
   STORAGE_KEY,
   calculateTCO,
 } from '@/lib/calculator';
-import { useAuthStore } from '@/store/authStore';
 import { useRoiCalculationsStore } from '@/store/roiCalculationsStore';
-import { importLegacyRoiCalculationsForUser } from '@/lib/importLegacyRoiCalculations';
+
+/**
+ * Read the in-progress draft from localStorage. Done as a lazy initialiser
+ * rather than in an effect so the first paint already shows the user's work --
+ * an effect would render an empty form, then replace it.
+ */
+function loadDraft(): CalculatorInputs {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return CLEARED_INPUTS;
+    return { ...CLEARED_INPUTS, ...JSON.parse(saved) };
+  } catch {
+    // A corrupt draft must not stop the calculator from opening.
+    return CLEARED_INPUTS;
+  }
+}
 
 export function useCalculator() {
-  const [inputs, setInputs] = useState<CalculatorInputs>(DEFAULT_INPUTS);
+  // Starts empty, never with invented numbers. A blank calculator is honest;
+  // a prefilled one can be exported to a customer as if it were their data.
+  const [inputs, setInputs] = useState<CalculatorInputs>(loadDraft);
   const [benefitYears, setBenefitYears] = useState(5);
   const [dataSaved, setDataSaved] = useState(true);
   const [previousInputs, setPreviousInputs] = useState<CalculatorInputs | null>(null);
   const [showUndo, setShowUndo] = useState(false);
-  const initialLoadDone = useRef(false);
 
-  const { user } = useAuthStore();
-  const uid = user?.uid;
-  const { calculations, subscribe, unsubscribe, save, remove } = useRoiCalculationsStore();
+  // The subscription itself lives in AppShell so both the dashboard and this
+  // page see the same list; here we only read it.
+  const { calculations, save, remove } = useRoiCalculationsStore();
 
   // Named/saved calculations live in Firestore (cross-device); the in-progress
   // draft below stays local since it's unsaved scratch work, not worth a cloud
@@ -33,33 +48,8 @@ export function useCalculator() {
     savedAt: new Date(c.updatedAt).toISOString(),
   }));
 
-  useEffect(() => {
-    if (!uid) return
-    subscribe(uid)
-    importLegacyRoiCalculationsForUser(uid, calculations).catch((err) =>
-      console.error('[importLegacyRoiCalculations]', err)
-    )
-    return () => unsubscribe()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid])
-
-  // Load in-progress draft on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setInputs(prev => ({ ...prev, ...parsed }));
-      } catch {
-        // ignore parse errors
-      }
-    }
-    initialLoadDone.current = true;
-  }, []);
-
   // Auto-save in-progress draft to localStorage
   useEffect(() => {
-    if (!initialLoadDone.current) return;
     const t = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
       setDataSaved(true);
@@ -67,7 +57,7 @@ export function useCalculator() {
     return () => clearTimeout(t);
   }, [inputs]);
 
-  const handleInputChange = useCallback((field: keyof CalculatorInputs, value: any) => {
+  const handleInputChange = useCallback(<K extends keyof CalculatorInputs>(field: K, value: CalculatorInputs[K]) => {
     setDataSaved(false);
     setInputs(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -79,6 +69,21 @@ export function useCalculator() {
     localStorage.removeItem(STORAGE_KEY);
     setDataSaved(true);
     return true;
+  }, [inputs]);
+
+  const loadExampleInputs = useCallback(() => {
+    setPreviousInputs({ ...inputs });
+    setShowUndo(true);
+    // Keep whatever the user already typed about *who* this is for -- only the
+    // numbers are examples.
+    setInputs(prev => ({
+      ...EXAMPLE_INPUTS,
+      customerName: prev.customerName,
+      projectName: prev.projectName,
+      plantLocation: prev.plantLocation,
+      preparedBy: prev.preparedBy,
+    }));
+    setDataSaved(false);
   }, [inputs]);
 
   const handleUndo = useCallback(() => {
@@ -111,13 +116,43 @@ export function useCalculator() {
 
   const loadCalculation = useCallback((calc: SavedCalculation) => {
     setInputs(calc.data);
+    setDataSaved(false);
   }, []);
 
-  const deleteCalculation = useCallback((calcName: string) => {
-    const existing = calculations.find(s => s.name === calcName);
+  // Keyed by id, not name: names are user-visible, duplicable and renameable,
+  // so they were never a safe identity.
+  const loadCalculationById = useCallback((id: string) => {
+    const existing = calculations.find(c => c.id === id);
+    if (!existing) return false;
+    setPreviousInputs({ ...inputs });
+    setShowUndo(true);
+    setInputs(existing.data);
+    setDataSaved(false);
+    return true;
+  }, [calculations, inputs]);
+
+  const deleteCalculation = useCallback((id: string) => {
+    remove(id);
+  }, [remove]);
+
+  const renameCalculation = useCallback((id: string, name: string) => {
+    const existing = calculations.find(c => c.id === id);
     if (!existing) return;
-    remove(existing.id);
-  }, [calculations, remove]);
+    save({ ...existing, name: name.trim(), updatedAt: Date.now() });
+  }, [calculations, save]);
+
+  const duplicateCalculation = useCallback((id: string) => {
+    const existing = calculations.find(c => c.id === id);
+    if (!existing) return;
+    const now = Date.now();
+    save({
+      id: crypto.randomUUID(),
+      name: `${existing.name} (Copy)`,
+      data: structuredClone(existing.data),
+      createdAt: now,
+      updatedAt: now,
+    });
+  }, [calculations, save]);
 
   const addNote = useCallback(() => {
     setDataSaved(false);
@@ -151,13 +186,18 @@ export function useCalculator() {
     showUndo,
     setShowUndo,
     savedCalculations,
+    calculations,
     handleInputChange,
     clearAllInputs,
+    loadExampleInputs,
     handleUndo,
     saveCalculation,
     confirmSaveOverwrite,
     loadCalculation,
+    loadCalculationById,
     deleteCalculation,
+    renameCalculation,
+    duplicateCalculation,
     addNote,
     updateNote,
     removeNote,

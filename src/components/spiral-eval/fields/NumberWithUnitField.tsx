@@ -1,7 +1,9 @@
 import { useController } from 'react-hook-form'
 import type { Control, Path } from 'react-hook-form'
-import { cn } from '../../../lib/utils'
+import { ChevronDown } from 'lucide-react'
 import type { FormValues } from '../../../schema/formSchema'
+import { FieldShell } from './FieldShell'
+import { controlClass } from './fieldStyles'
 
 interface Props {
   numberName: Path<FormValues>
@@ -11,6 +13,7 @@ interface Props {
   required?: boolean
   unitOptions: string[]
   placeholder?: string
+  hint?: string
 }
 
 export function NumberWithUnitField({
@@ -21,49 +24,72 @@ export function NumberWithUnitField({
   required,
   unitOptions,
   placeholder,
+  hint,
 }: Props) {
   const { field: numField, fieldState: numState } = useController({ name: numberName, control })
-  const { field: unitField } = useController({ name: unitName, control })
+  const { field: unitField, fieldState: unitState } = useController({ name: unitName, control })
+
+  // The unit is separately required by the schema (productLoadUnit is), but
+  // its error had nowhere to render -- so a Full-mode submit could fail with
+  // no visible reason anywhere on the page. Surface both.
+  const error = numState.error?.message ?? unitState.error?.message
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-1" aria-hidden>*</span>}
-      </label>
-      <div className="flex gap-2">
-        <input
-          type="number"
-          step="any"
-          placeholder={placeholder}
-          value={(numField.value as number) ?? ''}
-          onChange={(e) => {
-            const val = e.target.valueAsNumber
-            numField.onChange(isNaN(val) ? undefined : val)
-          }}
-          onBlur={numField.onBlur}
-          name={numField.name}
-          className={cn(
-            'flex-1 h-12 px-4 rounded-lg border text-base bg-white',
-            'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent',
-            numState.error ? 'border-red-400 bg-red-50' : 'border-gray-300',
-          )}
-        />
-        <select
-          {...unitField}
-          value={(unitField.value as string) ?? ''}
-          className="h-12 px-3 rounded-lg border border-gray-300 text-base bg-white
-            focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-        >
-          <option value="">unit</option>
-          {unitOptions.map((u) => (
-            <option key={u} value={u}>{u}</option>
-          ))}
-        </select>
-      </div>
-      {numState.error && (
-        <p className="text-sm text-red-600 mt-1">{numState.error.message}</p>
+    <FieldShell
+      name={numberName}
+      control={control}
+      label={label}
+      required={required}
+      hint={hint}
+      error={error}
+    >
+      {({ id, describedBy, invalid, deferred }) => (
+        <div className="flex gap-2">
+          <input
+            id={id}
+            type="number"
+            step="any"
+            inputMode="decimal"
+            placeholder={placeholder}
+            value={(numField.value as number) ?? ''}
+            onChange={(e) => {
+              const val = e.target.valueAsNumber
+              numField.onChange(isNaN(val) ? undefined : val)
+            }}
+            onBlur={numField.onBlur}
+            name={numField.name}
+            ref={numField.ref}
+            disabled={deferred}
+            aria-describedby={describedBy}
+            aria-invalid={invalid || undefined}
+            className={controlClass(!!numState.error && !deferred, 'flex-1')}
+          />
+          <div className="relative">
+            <select
+              {...unitField}
+              value={(unitField.value as string) ?? ''}
+              disabled={deferred}
+              aria-label={`${label} — unit`}
+              aria-invalid={(!!unitState.error && !deferred) || undefined}
+              className={controlClass(
+                !!unitState.error && !deferred,
+                'w-auto appearance-none pr-10',
+              )}
+            >
+              <option value="">unit</option>
+              {unitOptions.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-5 text-gray-600"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
       )}
-    </div>
+    </FieldShell>
   )
 }

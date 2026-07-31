@@ -1,17 +1,44 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Who may hold data in this project. Mirrors src/lib/allowedEmails.ts --
+    // if you change one, change the other. Enforced here as well as in the
+    // client so it cannot be bypassed by calling Firebase directly.
+    //
+    // Audited 2026-07-31: every real account was already @intralox.com, so
+    // isAllowlisted() is empty. Add addresses to that list (lowercase) before
+    // onboarding anyone on an outside domain.
+    function emailDomain() {
+      return request.auth.token.email.lower().split('@')[1];
+    }
+
+    function isAllowlisted() {
+      return false;
+    }
+
+    function isAllowedUser() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && (emailDomain() == 'intralox.com' || isAllowlisted());
+    }
+
+    function isOwner(uid) {
+      return isAllowedUser() && request.auth.uid == uid;
+    }
+
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner(uid);
 
       match /assessments/{assessmentId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       match /roiCalculations/{calcId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
     }
+
     match /{document=**} {
       allow read, write: if false;
     }

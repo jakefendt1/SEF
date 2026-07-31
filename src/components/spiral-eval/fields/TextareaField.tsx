@@ -2,6 +2,7 @@ import { useController } from 'react-hook-form'
 import type { Control, Path } from 'react-hook-form'
 import { cn } from '../../../lib/utils'
 import type { FormValues } from '../../../schema/formSchema'
+import { FieldShell } from './FieldShell'
 
 interface Props {
   name: Path<FormValues>
@@ -10,30 +11,46 @@ interface Props {
   required?: boolean
   placeholder?: string
   rows?: number
+  hint?: string
 }
 
-export function TextareaField({ name, control, label, required, placeholder, rows = 3 }: Props) {
+export function TextareaField({
+  name,
+  control,
+  label,
+  required,
+  placeholder,
+  rows = 3,
+  hint,
+}: Props) {
   const { field, fieldState } = useController({ name, control })
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-1" aria-hidden>*</span>}
-      </label>
-      <textarea
-        {...field}
-        value={(field.value as string) ?? ''}
-        rows={rows}
-        placeholder={placeholder}
-        className={cn(
-          'w-full px-4 py-3 rounded-lg border text-base bg-white resize-none',
-          'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent',
-          fieldState.error ? 'border-red-400 bg-red-50' : 'border-gray-300',
-        )}
-      />
-      {fieldState.error && (
-        <p className="text-sm text-red-600 mt-1">{fieldState.error.message}</p>
+    <FieldShell
+      name={name}
+      control={control}
+      label={label}
+      required={required}
+      hint={hint}
+      error={fieldState.error?.message}
+    >
+      {({ id, describedBy, invalid, deferred }) => (
+        <textarea
+          {...field}
+          id={id}
+          value={(field.value as string) ?? ''}
+          rows={rows}
+          placeholder={placeholder}
+          disabled={deferred}
+          aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
+          className={cn(
+            'w-full px-4 py-3 rounded-lg border text-base bg-white resize-y',
+            'focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent',
+            'disabled:bg-gray-100 disabled:text-gray-500',
+            invalid ? 'border-red-500 bg-red-50' : 'border-gray-400',
+          )}
+        />
       )}
-    </div>
+    </FieldShell>
   )
 }

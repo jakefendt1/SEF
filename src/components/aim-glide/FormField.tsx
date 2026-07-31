@@ -13,6 +13,22 @@ import {
 import { cn } from '@/lib/utils';
 import { useId } from 'react';
 
+/**
+ * Numeric inputs used to render `value || ''`, which made a real, typed 0
+ * display as an empty box -- so "we have zero downtime" and "I haven't
+ * answered yet" looked identical, and the ROI output was built on the
+ * difference. Show the number, and select it on focus so typing still just
+ * replaces it.
+ */
+const numberInputProps = (value: number, onChange: (value: number) => void) => ({
+  value: Number.isFinite(value) ? String(value) : '',
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+    const parsed = parseFloat(e.target.value);
+    onChange(Number.isFinite(parsed) ? parsed : 0);
+  },
+  onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select(),
+});
+
 interface NumberFieldProps {
   label: string;
   hint?: string;
@@ -39,8 +55,7 @@ export function NumberField({ label, hint, value, onChange, suffix, step = '1', 
         <Input
           id={id}
           type="number"
-          value={value || ''}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          {...numberInputProps(value, onChange)}
           step={step}
           className="font-mono text-base h-11 min-h-[44px]"
           aria-describedby={hintId}
@@ -86,8 +101,7 @@ export function NumberWithSelect({
         <Input
           id={id}
           type="number"
-          value={value || ''}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          {...numberInputProps(value, onChange)}
           step={step}
           className="font-mono text-base h-11 min-h-[44px] flex-1 min-w-[100px]"
           inputMode="decimal"
@@ -173,8 +187,7 @@ export function NumberWithSelectAndText({
         <Input
           id={id}
           type="number"
-          value={value || ''}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          {...numberInputProps(value, onChange)}
           className="font-mono text-base h-11 min-h-[44px] w-[140px]"
           inputMode="decimal"
         />
@@ -231,8 +244,7 @@ export function OutputField({
         <Input
           id={id}
           type="number"
-          value={value || ''}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          {...numberInputProps(value, onChange)}
           className="font-mono text-base h-11 min-h-[44px] flex-1 min-w-[100px]"
           inputMode="decimal"
         />

@@ -2,6 +2,8 @@ import { useController } from 'react-hook-form'
 import type { Control, Path } from 'react-hook-form'
 import { cn } from '../../../lib/utils'
 import type { FormValues } from '../../../schema/formSchema'
+import { FieldShell } from './FieldShell'
+import { choiceClass } from './fieldStyles'
 
 interface Props {
   name: Path<FormValues>
@@ -9,41 +11,68 @@ interface Props {
   label: string
   required?: boolean
   options: string[]
+  hint?: string
 }
 
-export function RadioGroupField({ name, control, label, required, options }: Props) {
+/**
+ * Pick exactly one. Rendered as rounded pills with a "Choose one" caption --
+ * radio and checkbox groups used to look identical, so there was no way to
+ * tell whether a second tap would add to your answer or replace it.
+ */
+export function RadioGroupField({ name, control, label, required, options, hint }: Props) {
   const { field, fieldState } = useController({ name, control })
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-1" aria-hidden>*</span>}
-      </label>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
-        {options.map((opt) => {
-          const selected = field.value === opt
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => field.onChange(opt)}
-              onBlur={field.onBlur}
-              className={cn(
-                'min-h-[44px] px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
-                selected
-                  ? 'border-blue-600 bg-blue-50 text-blue-800 ring-1 ring-blue-600'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400',
-                fieldState.error && !selected && 'border-red-300',
-              )}
-            >
-              {opt}
-            </button>
-          )
-        })}
-      </div>
-      {fieldState.error && (
-        <p className="text-sm text-red-600 mt-1">{fieldState.error.message}</p>
+    <FieldShell
+      name={name}
+      control={control}
+      label={label}
+      required={required}
+      hint={hint}
+      error={fieldState.error?.message}
+      asGroup
+    >
+      {({ describedBy, invalid, deferred }) => (
+        <>
+          <p className="text-sm text-gray-600 mb-2">Choose one</p>
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-label={label}
+            aria-describedby={describedBy}
+          >
+            {options.map((opt) => {
+              const selected = field.value === opt
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={deferred}
+                  onClick={() => field.onChange(opt)}
+                  onBlur={field.onBlur}
+                  className={choiceClass(
+                    selected,
+                    invalid,
+                    cn('rounded-full inline-flex items-center gap-2'),
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'size-5 rounded-full border-2 shrink-0 flex items-center justify-center',
+                      selected ? 'border-brand' : 'border-gray-400',
+                    )}
+                    aria-hidden="true"
+                  >
+                    {selected && <span className="size-2.5 rounded-full bg-brand" />}
+                  </span>
+                  {opt}
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
-    </div>
+    </FieldShell>
   )
 }

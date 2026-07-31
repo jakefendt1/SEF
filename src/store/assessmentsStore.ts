@@ -4,9 +4,11 @@ import {
   putAssessment,
   deleteAssessmentDoc,
   subscribeAssessments,
+  updateAssessmentFields,
 } from '../lib/firestoreAssessments'
 import { submitToSheets } from '../lib/api'
 import { countFilled } from '../lib/autosaveGuard'
+import { duplicateTitle } from '../lib/assessmentTitle'
 import type { FormValues } from '../schema/formSchema'
 
 export type SubmitResult =
@@ -25,6 +27,9 @@ interface Store {
   retryFailed: (id: string) => Promise<void>
   flushQueue: () => Promise<void>
   deleteAssessment: (id: string) => Promise<void>
+  renameAssessment: (id: string, title: string) => Promise<void>
+  /** Returns the new record's id, or null if the source was not found. */
+  duplicateAssessment: (id: string) => Promise<string | null>
 }
 
 let unsub: (() => void) | null = null
@@ -76,6 +81,9 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       ...(existing?.syncedAt !== undefined ? { syncedAt: existing.syncedAt } : {}),
+      // This is a whole-document write, so anything not restated here is
+      // erased -- the user's chosen name included.
+      ...(existing?.title !== undefined ? { title: existing.title } : {}),
     })
   },
 
@@ -89,6 +97,7 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
       status: 'queued',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      ...(existing?.title !== undefined ? { title: existing.title } : {}),
     }
 
     if (!navigator.onLine) {
@@ -142,5 +151,35 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
     const { uid } = get()
     if (!uid) return
     await deleteAssessmentDoc(uid, id)
+  },
+
+  async renameAssessment(id, title) {
+    const { uid } = get()
+    if (!uid) return
+    // A metadata-only patch. Deliberately not saveDraft, which rewrites the
+    // whole document and stamps status.
+    await updateAssessmentFields(uid, id, { title: title.trim(), updatedAt: Date.now() })
+  },
+
+  async duplicateAssessment(id) {
+    const { assessments } = get()
+    const source = assessments.find((a) => a.id === id)
+    if (!source) return null
+
+    const now = Date.now()
+    const copy: StoredAssessment = {
+      id: crypto.randomUUID(),
+      // Structured clone so the copy shares no nested arrays with the source.
+      data: structuredClone(source.data),
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+      title: duplicateTitle(source),
+      // syncedAt is deliberately NOT carried over. A spread would bring it,
+      // and the copy -- which has never been sent -- would then look like it
+      // had been, breaking the "edited since sent" derivation.
+    }
+    await get().upsert(copy)
+    return copy.id
   },
 }))

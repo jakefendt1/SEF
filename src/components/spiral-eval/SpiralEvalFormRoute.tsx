@@ -1,10 +1,9 @@
-import { useParams, useLocation } from 'wouter'
-import { FormView } from './FormView'
+import { useParams } from 'wouter'
+import { SpiralEvalFormShell } from './SpiralEvalFormShell'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 
 export function SpiralEvalFormRoute() {
-  const { id } = useParams<{ id: string }>()
-  const [, navigate] = useLocation()
+  const { id, section } = useParams<{ id: string; section?: string }>()
   const { assessments, loaded } = useAssessmentsStore()
 
   if (!id) return null
@@ -15,19 +14,17 @@ export function SpiralEvalFormRoute() {
   if (!loaded) {
     return (
       <div className="px-4 py-16 text-center">
-        <p className="text-gray-400 text-sm">Loading…</p>
+        <p className="text-gray-600 text-base">Loading…</p>
       </div>
     )
   }
 
   const stored = assessments.find((a) => a.id === id)
 
+  // `key` on the id only: switching records must remount the form, but moving
+  // between sections of the same record must not -- that would throw away
+  // every unsaved keystroke on navigation.
   return (
-    <FormView
-      key={id}
-      assessmentId={id}
-      existing={stored}
-      onDone={() => navigate('/spiral-eval')}
-    />
+    <SpiralEvalFormShell key={id} assessmentId={id} existing={stored} section={section} />
   )
 }

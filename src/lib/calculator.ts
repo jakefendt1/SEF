@@ -116,7 +116,13 @@ export const BENEFIT_YEARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 export const STORAGE_KEY = 'aim_glide_calculator_data_v3';
 export const SAVED_CALCULATIONS_KEY = 'aim_glide_saved_calculations';
 
-export const DEFAULT_INPUTS: CalculatorInputs = {
+/**
+ * Illustrative numbers for a mid-size bakery line. These are NOT defaults --
+ * they are only applied when the user explicitly taps "Load example values",
+ * because a calculator that silently prefills invented figures can be exported
+ * to a customer as a PDF that looks like their own data.
+ */
+export const EXAMPLE_INPUTS: CalculatorInputs = {
   customerName: '',
   projectName: '',
   plantLocation: '',

@@ -1,55 +1,80 @@
-import type { FormValues } from '../schema/formSchema'
-import { isSpiral2Applicable } from '../schema/conditionals'
+// Progress reporting for the Spiral Eval form.
+//
+// Everything here is derived from REQUIRED_RULES in formSchema.ts. It used to
+// be a separate hand-maintained list, which had drifted: the bar could read a
+// satisfying 100% while Submit still bounced the user for eight fields the bar
+// had never heard of.
+import {
+  activeRequiredRules,
+  missingRequiredRules,
+  isDeferred,
+  isFilled,
+  formSchema,
+  type FormValues,
+  type RequiredRule,
+  type SectionId,
+} from '../schema/formSchema'
+import { FORM_SECTIONS } from '../schema/sectionMap'
 
-// Core required fields that apply in both Quick and Full modes
-const ALWAYS_REQUIRED: ReadonlyArray<keyof FormValues> = [
-  'name', 'companyName', 'email',
-  'installationType', 'applicationType', 'productProcessed',
-  'incomingProductTemp', 'beltSpeed',
-  'spiralManufacturer', 'travelDirection', 'rotationDirection',
-  'numTiersSpiral1', 'tierPitch', 'takeUpTravelLength',
-  'drumBasis', 'drumValue', 'beltWidth', 'infeedLength', 'dischargeLength',
-  'configurationSpiral1', 'returnTypeSpiral1',
-  'numRails', 'railSpacing', 'insideOverhang', 'outsideOverhang',
-  'carrywayWearstripMaterial', 'drumType', 'cageBarCapMaterial',
-]
-
-const FULL_ONLY_REQUIRED: ReadonlyArray<keyof FormValues> = [
-  'title', 'phone', 'countryOrRegion', 'address', 'city', 'stateProvince', 'zipPostalCode',
-  'howProductCarried', 'heatSource', 'productProperties',
-  'productLoad', 'productDimL', 'productDimW', 'productDimH',
-  'operatingEnvTemp', 'minOperatingEnvTemp', 'maxOperatingEnvTemp',
-]
-
-function isFilled(val: unknown): boolean {
-  if (val == null) return false
-  if (typeof val === 'string') return val.trim().length > 0
-  if (Array.isArray(val)) return val.length > 0
-  if (typeof val === 'number') return true
-  return Boolean(val)
+export interface Completeness {
+  filled: number
+  total: number
+  pct: number
+  /** Required fields still needing an answer, with human labels. */
+  missing: RequiredRule[]
+  /** Fields the user explicitly deferred; counted as answered, tracked here. */
+  deferredCount: number
+  /**
+   * True only when the form would actually pass validation. The bar reaching
+   * 100% is necessary but not sufficient -- format rules (a valid email) and
+   * exclusivity rules can still fail.
+   */
+  canSubmit: boolean
 }
 
-export function getCompleteness(
-  values: Partial<FormValues>,
-  mode: 'quick' | 'full',
-): { filled: number; total: number; pct: number } {
-  const required = [...ALWAYS_REQUIRED]
+export function getCompleteness(values: Partial<FormValues>): Completeness {
+  const active = activeRequiredRules(values)
+  const missing = missingRequiredRules(values)
+  const total = active.length
+  const filled = total - missing.length
+  const deferredCount = active.filter((rule) => isDeferred(values, rule.field)).length
 
-  if (mode === 'full') {
-    required.push(...FULL_ONLY_REQUIRED)
+  return {
+    filled,
+    total,
+    pct: total > 0 ? Math.round((filled / total) * 100) : 0,
+    missing,
+    deferredCount,
+    canSubmit: formSchema.safeParse(values).success,
   }
+}
 
-  // Add spiral 2 fields if applicable
-  if (isSpiral2Applicable(values.travelDirection)) {
-    required.push('numTiersSpiral2', 'distanceBetweenDrums', 'configurationSpiral2', 'returnTypeSpiral2')
-  }
+export interface SectionProgress {
+  id: SectionId
+  filled: number
+  total: number
+  /** True when this section has no required fields left unanswered. */
+  complete: boolean
+  /** True when the user has answered nothing at all here yet. */
+  untouched: boolean
+}
 
-  // Add cage bar fields if drum = Cage
-  if (values.drumType === 'Cage') {
-    required.push('cageBarDimA', 'cageBarDimB', 'cageBarDimC')
-  }
+/** Per-section progress, for the checklist hub and the jump navigation. */
+export function getSectionProgress(values: Partial<FormValues>): SectionProgress[] {
+  const active = activeRequiredRules(values)
+  const missing = new Set(missingRequiredRules(values).map((r) => r.field))
 
-  const total = required.length
-  const filled = required.filter((f) => isFilled(values[f])).length
-  return { filled, total, pct: total > 0 ? Math.round((filled / total) * 100) : 0 }
+  return FORM_SECTIONS.map((section) => {
+    const required = active.filter((r) => r.section === section.id)
+    const filled = required.filter((r) => !missing.has(r.field)).length
+    const anyAnswered = section.fields.some((f) => isFilled(values[f]))
+
+    return {
+      id: section.id,
+      filled,
+      total: required.length,
+      complete: required.length > 0 && filled === required.length,
+      untouched: !anyAnswered,
+    }
+  })
 }

@@ -74,7 +74,7 @@ export function AssessmentPDF({ assessment }: { assessment: StoredAssessment }) 
     : null
 
   return (
-    <Document title="Spiral Evaluation" author="Intralox Spiral Eval">
+    <Document title="Spiral Evaluation" author="Intralox Account Manager Hub">
       <Page size="LETTER" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>

@@ -32,3 +32,6 @@ spiral-eval-*.json
 
 .vercel
 .env*
+# ...but the template of which variables are needed must be committed, or a
+# new checkout has no way to know what to fill in.
+!.env.example

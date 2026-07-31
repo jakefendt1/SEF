@@ -243,7 +243,9 @@ export function generatePDF(inputs: CalculatorInputs, tco: TCOResult, benefitYea
   }
 
   // Page numbers
-  const pageCount = (pdf as any).internal.getNumberOfPages();
+  // jsPDF exposes `internal` at runtime but omits it from its public types.
+  const pageCount = (pdf as unknown as { internal: { getNumberOfPages(): number } })
+    .internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
     pdf.setFontSize(9);

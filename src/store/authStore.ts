@@ -16,6 +16,10 @@ import {
   serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
+import { isAllowedSignupEmail } from '../lib/allowedEmails'
+
+/** Error code thrown when a signup email fails the domain restriction. */
+export const SIGNUP_DOMAIN_NOT_ALLOWED = 'auth/email-domain-not-allowed'
 
 export type UserRole = 'ic' | 'admin'
 
@@ -47,7 +51,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
   allUsers: [],
 
   init() {
-    let timeout: ReturnType<typeof setTimeout>
+    // Hard fallback: if Firebase never answers, unblock the UI after 8s rather
+    // than leaving the user staring at a spinner. Started before the listener
+    // so the listener's callback can cancel it; `unsub` is only *called* from
+    // inside the timeout, which fires long after it is assigned.
+    const timeout = setTimeout(() => {
+      unsub()
+      set({ user: null, profile: null, role: null, loading: false })
+    }, 8000)
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       clearTimeout(timeout)
@@ -81,12 +92,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
         set({ user, profile, role: 'ic', loading: false })
       }
     })
-
-    // Hard fallback — if Firebase never fires, unblock the UI after 8s
-    timeout = setTimeout(() => {
-      unsub()
-      set({ user: null, profile: null, role: null, loading: false })
-    }, 8000)
   },
 
   async signIn(email, password) {
@@ -95,6 +100,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   async createAccount(name, email, password) {
+    // Checked here so the user sees a plain explanation rather than an opaque
+    // permission error later; firestore.rules enforces the same thing so this
+    // can't be bypassed by talking to Firebase directly.
+    if (!isAllowedSignupEmail(email)) {
+      throw new Error(SIGNUP_DOMAIN_NOT_ALLOWED)
+    }
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     const profile: UserProfile = {
       email,

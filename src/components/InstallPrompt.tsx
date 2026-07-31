@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'wouter'
+import { ROUTES } from '../lib/navigation'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -8,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 export function InstallPrompt() {
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
+  const [location] = useLocation()
 
   useEffect(() => {
     function handleBeforeInstall(e: Event) {
@@ -18,7 +21,9 @@ export function InstallPrompt() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
   }, [])
 
-  if (!prompt || dismissed) return null
+  // Only on the dashboard. Interrupting someone mid-form with an install
+  // banner pushes the page down and costs them their place.
+  if (!prompt || dismissed || location !== ROUTES.dashboard) return null
 
   async function install() {
     if (!prompt) return
@@ -29,18 +34,20 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="bg-blue-900 text-white px-4 py-3 flex items-center justify-between gap-3">
-      <p className="text-sm">Add Spiral Eval to your home screen for offline access.</p>
+    <div className="bg-brand text-white px-4 py-3 flex items-center justify-between gap-3">
+      <p className="text-sm">
+        Add the Account Manager Hub to your home screen so it works without a signal.
+      </p>
       <div className="flex gap-2 shrink-0">
         <button
           onClick={() => setDismissed(true)}
-          className="text-blue-300 text-xs hover:text-white"
+          className="text-blue-100 text-sm hover:text-white px-3 min-h-[44px]"
         >
           Later
         </button>
         <button
           onClick={install}
-          className="bg-white text-blue-900 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50"
+          className="bg-white text-brand text-sm font-semibold px-4 min-h-[44px] rounded-lg hover:bg-blue-50"
         >
           Install
         </button>

@@ -22,9 +22,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { IntraloxLogo } from './IntraloxLogo';
 import { CalculatorTab } from './CalculatorTab';
 import { ResultsTab } from './ResultsTab';
+import { SavedCalculationsTab } from './SavedCalculationsTab';
 import { useCalculator } from '@/hooks/useCalculator';
 import { generatePDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
@@ -37,12 +37,14 @@ import {
   RotateCcw,
   MoreVertical,
   Check,
+  Lightbulb,
 } from 'lucide-react';
 
 export function AimGlideHome() {
   const calc = useCalculator();
   const [activeTab, setActiveTab] = useState('calculator');
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [exampleDialogOpen, setExampleDialogOpen] = useState(false);
   const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
   const [overwriteInfo, setOverwriteInfo] = useState<{ name: string; index: number } | null>(null);
 
@@ -86,109 +88,110 @@ export function AimGlideHome() {
     });
   }, [calc]);
 
+  const handleLoadExample = useCallback(() => {
+    calc.loadExampleInputs();
+    setExampleDialogOpen(false);
+    toast('Example numbers loaded — replace them with the real ones', {
+      action: {
+        label: 'Undo',
+        onClick: () => calc.handleUndo(),
+      },
+    });
+  }, [calc]);
+
   return (
     <>
-      {/* Skip to content link for keyboard users */}
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-
-      <div className="min-h-screen flex flex-col bg-background">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b" role="banner">
-          <div className="container flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <IntraloxLogo />
-              <div className="h-6 w-px bg-border hidden sm:block" aria-hidden="true" />
-              <div className="flex flex-col">
-                <h1 className="text-sm sm:text-base font-semibold text-foreground leading-tight">
-                  AIM Glide ROI Calculator
-                </h1>
-                {calc.inputs.customerName && (
-                  <p className="text-[11px] text-muted-foreground truncate max-w-[200px] sm:max-w-none">
-                    {calc.inputs.customerName}
-                    {calc.inputs.projectName ? ` — ${calc.inputs.projectName}` : ''}
-                  </p>
-                )}
-              </div>
+      <div className="flex flex-col bg-background">
+        {/* Page toolbar. Deliberately not sticky and not a <header> -- the app
+            shell already owns the sticky header and the back navigation. */}
+        <div className="border-b bg-card no-print">
+          <div className="container flex items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-foreground leading-tight">
+                AIM Glide ROI Calculator
+              </h2>
+              <p className="text-sm text-muted-foreground truncate">
+                {calc.inputs.customerName
+                  ? `${calc.inputs.customerName}${calc.inputs.projectName ? ` — ${calc.inputs.projectName}` : ''}`
+                  : 'Untitled calculation'}
+              </p>
             </div>
 
-            <div className="flex items-center gap-2 no-print">
-              {/* Auto-save indicator */}
+            <div className="flex items-center gap-2 shrink-0">
               {calc.dataSaved && (
-                <span className="text-[11px] text-muted-foreground hidden sm:flex items-center gap-1">
-                  <Check className="size-3 text-savings-green" aria-hidden="true" />
+                <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
+                  <Check className="size-4 text-savings-green" aria-hidden="true" />
                   Saved
                 </span>
               )}
 
-              {/* Desktop action buttons */}
               <div className="hidden sm:flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-9">
+                <Button variant="outline" onClick={handleExportPDF} className="min-h-[44px]">
                   <FileDown className="size-4" />
                   Export PDF
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleSave} className="h-9">
+                <Button variant="outline" onClick={handleSave} className="min-h-[44px]">
                   <Save className="size-4" />
                   Save
                 </Button>
               </div>
 
-              {/* Mobile + Desktop overflow menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9" aria-label="More actions">
-                    <MoreVertical className="size-4" />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-11"
+                    aria-label="More actions"
+                  >
+                    <MoreVertical className="size-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuItem onClick={handleExportPDF} className="sm:hidden">
                     <FileDown className="size-4" />
                     Export PDF
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSave} className="sm:hidden">
                     <Save className="size-4" />
-                    Save Calculation
+                    Save calculation
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="sm:hidden" />
 
-                  {/* Saved Calculations */}
-                  {calc.savedCalculations.length > 0 && (
-                    <>
-                      {calc.savedCalculations.map((sc) => (
-                        <DropdownMenuItem key={sc.name} onClick={() => {
-                          calc.loadCalculation(sc);
-                          toast.success(`Loaded: ${sc.name}`);
-                        }}>
-                          <FolderOpen className="size-4" />
-                          {sc.name}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
+                  <DropdownMenuItem onClick={() => setActiveTab('saved')}>
+                    <FolderOpen className="size-4" />
+                    Saved calculations
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
 
+                  <DropdownMenuItem onClick={() => setExampleDialogOpen(true)}>
+                    <Lightbulb className="size-4" />
+                    Load example values
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setClearDialogOpen(true)}>
                     <RotateCcw className="size-4" />
-                    Clear All Inputs
+                    Clear all inputs
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Main Content */}
-        <main id="main-content" className="flex-1 container py-5 sm:py-8" role="main">
+        <div className="flex-1 container py-5 sm:py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-12 sm:h-11 max-w-md mx-auto">
-              <TabsTrigger value="calculator" className="gap-2 text-sm h-10 sm:h-9 min-h-[44px]">
+            <TabsList className="grid w-full grid-cols-3 mb-6 h-14 max-w-xl mx-auto">
+              <TabsTrigger value="calculator" className="gap-2 text-base min-h-[48px]">
                 <Calculator className="size-4" aria-hidden="true" />
                 Calculator
               </TabsTrigger>
-              <TabsTrigger value="results" className="gap-2 text-sm h-10 sm:h-9 min-h-[44px]">
+              <TabsTrigger value="results" className="gap-2 text-base min-h-[48px]">
                 <BarChart3 className="size-4" aria-hidden="true" />
-                Results & ROI
+                Results
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="gap-2 text-base min-h-[48px]">
+                <FolderOpen className="size-4" aria-hidden="true" />
+                Saved
               </TabsTrigger>
             </TabsList>
 
@@ -210,14 +213,38 @@ export function AimGlideHome() {
                 onBenefitYearsChange={calc.setBenefitYears}
               />
             </TabsContent>
-          </Tabs>
-        </main>
 
-        {/* Footer */}
-        <footer className="border-t py-4 no-print" role="contentinfo">
+            <TabsContent value="saved" className="mt-0">
+              <SavedCalculationsTab
+                calculations={calc.calculations}
+                onLoad={(id) => {
+                  if (!calc.loadCalculationById(id)) return;
+                  setActiveTab('calculator');
+                  toast('Opened', {
+                    action: { label: 'Undo', onClick: () => calc.handleUndo() },
+                  });
+                }}
+                onRename={(id, name) => {
+                  calc.renameCalculation(id, name);
+                  toast.success('Renamed');
+                }}
+                onDuplicate={(id) => {
+                  calc.duplicateCalculation(id);
+                  toast.success('Copy created');
+                }}
+                onDelete={(id) => {
+                  calc.deleteCalculation(id);
+                  toast.success('Deleted');
+                }}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <footer className="border-t py-4 no-print">
           <div className="container">
             <p className="text-xs text-muted-foreground text-center">
-              Intralox AIM Glide ROI Calculator v9 — For internal use only
+              Intralox AIM Glide ROI Calculator — For internal use only
             </p>
           </div>
         </footer>
@@ -237,6 +264,24 @@ export function AimGlideHome() {
             <AlertDialogAction onClick={handleClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Clear All
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Load Example Values Dialog */}
+      <AlertDialog open={exampleDialogOpen} onOpenChange={setExampleDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Load example values?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This fills every number with made-up figures from a sample bakery line, so you can see
+              how the calculator works. Replace them with the customer's real numbers before you save
+              or export anything.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLoadExample}>Load examples</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

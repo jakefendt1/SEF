@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const putAssessment = vi.fn().mockResolvedValue(undefined)
 const deleteAssessmentDoc = vi.fn().mockResolvedValue(undefined)
 const subscribeAssessments = vi.fn().mockReturnValue(() => {})
+const updateAssessmentFields = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../lib/firestoreAssessments', () => ({
   putAssessment: (...args: unknown[]) => putAssessment(...args),
   deleteAssessmentDoc: (...args: unknown[]) => deleteAssessmentDoc(...args),
   subscribeAssessments: (...args: unknown[]) => subscribeAssessments(...args),
+  updateAssessmentFields: (...args: unknown[]) => updateAssessmentFields(...args),
 }))
 
 const submitToSheets = vi.fn()
@@ -24,6 +26,7 @@ function seed(state: { uid: string; loaded: boolean; assessments: unknown[] }) {
 beforeEach(() => {
   putAssessment.mockClear()
   deleteAssessmentDoc.mockClear()
+  updateAssessmentFields.mockClear()
   submitToSheets.mockReset()
   useAssessmentsStore.setState({ uid: 'u1', assessments: [], loaded: true } as never)
 })
@@ -97,6 +100,117 @@ describe('saveDraft', () => {
 
     await useAssessmentsStore.getState().saveDraft('a1', {})
 
+    expect(putAssessment).not.toHaveBeenCalled()
+  })
+})
+
+describe('saveDraft and the user-chosen title', () => {
+  // saveDraft writes the whole document, so anything it forgets to restate is
+  // erased. The title is the easy one to forget.
+  it('preserves a user-set title through an autosave', async () => {
+    seed({
+      uid: 'u1',
+      loaded: true,
+      assessments: [{
+        id: 'a1',
+        data: { name: 'Jane' },
+        status: 'draft',
+        createdAt: 1,
+        updatedAt: 2,
+        title: 'Freezer line 3',
+      }],
+    })
+
+    await useAssessmentsStore.getState().saveDraft('a1', { name: 'Jane Updated' })
+
+    const [, written] = putAssessment.mock.calls[0]
+    expect(written.title).toBe('Freezer line 3')
+  })
+
+  it('does not invent a title for a record that never had one', async () => {
+    seed({ uid: 'u1', loaded: true, assessments: [] })
+    await useAssessmentsStore.getState().saveDraft('new-1', { name: 'New' })
+    const [, written] = putAssessment.mock.calls[0]
+    expect('title' in written).toBe(false)
+  })
+})
+
+describe('renameAssessment', () => {
+  it('patches only metadata, never the answers or the status', async () => {
+    seed({
+      uid: 'u1',
+      loaded: true,
+      assessments: [{
+        id: 'a1',
+        data: { name: 'Jane' },
+        status: 'synced',
+        createdAt: 1,
+        updatedAt: 2,
+        syncedAt: 2,
+      }],
+    })
+
+    await useAssessmentsStore.getState().renameAssessment('a1', '  Freezer line 3  ')
+
+    expect(putAssessment).not.toHaveBeenCalled()
+    const [, , patch] = updateAssessmentFields.mock.calls[0]
+    expect(patch.title).toBe('Freezer line 3')
+    expect(patch).not.toHaveProperty('status')
+    expect(patch).not.toHaveProperty('data')
+  })
+})
+
+describe('duplicateAssessment', () => {
+  const SOURCE = {
+    id: 'a1',
+    data: { name: 'Jane', companyName: 'Acme Foods', heatSource: ['Oven'] },
+    status: 'synced' as const,
+    createdAt: 1,
+    updatedAt: 2,
+    syncedAt: 2,
+  }
+
+  it('creates an unsent draft with a new id and fresh timestamps', async () => {
+    seed({ uid: 'u1', loaded: true, assessments: [SOURCE] })
+
+    const newId = await useAssessmentsStore.getState().duplicateAssessment('a1')
+
+    expect(newId).toBeTruthy()
+    expect(newId).not.toBe('a1')
+    const [, written] = putAssessment.mock.calls[0]
+    expect(written.id).toBe(newId)
+    expect(written.status).toBe('draft')
+    expect(written.createdAt).toBeGreaterThan(SOURCE.createdAt)
+  })
+
+  // A naive spread carries syncedAt, which would make a copy that was never
+  // sent look sent -- and break the "changed since sending" derivation.
+  it('drops syncedAt so the copy is not mistaken for a sent record', async () => {
+    seed({ uid: 'u1', loaded: true, assessments: [SOURCE] })
+    await useAssessmentsStore.getState().duplicateAssessment('a1')
+    const [, written] = putAssessment.mock.calls[0]
+    expect(written.syncedAt).toBeUndefined()
+  })
+
+  it('marks the copy in its title rather than mutating customer answers', async () => {
+    seed({ uid: 'u1', loaded: true, assessments: [SOURCE] })
+    await useAssessmentsStore.getState().duplicateAssessment('a1')
+    const [, written] = putAssessment.mock.calls[0]
+    expect(written.title).toBe('Acme Foods (Copy)')
+    expect(written.data.companyName).toBe('Acme Foods')
+  })
+
+  it('deep-copies the answers so editing the copy cannot alter the original', async () => {
+    seed({ uid: 'u1', loaded: true, assessments: [SOURCE] })
+    await useAssessmentsStore.getState().duplicateAssessment('a1')
+    const [, written] = putAssessment.mock.calls[0]
+    written.data.heatSource.push('Fryer')
+    expect(SOURCE.data.heatSource).toEqual(['Oven'])
+  })
+
+  it('returns null and writes nothing for an unknown id', async () => {
+    seed({ uid: 'u1', loaded: true, assessments: [] })
+    expect(await useAssessmentsStore.getState().duplicateAssessment('nope')).toBeNull()
     expect(putAssessment).not.toHaveBeenCalled()
   })
 })

@@ -100,6 +100,12 @@ export const NumVFDs = z.enum(['0', '1', '2', '3'])
 const baseSchema = z.object({
   mode: FormMode,
 
+  // Fields the user marked "I don't know / measure later". Stored as field
+  // names so the required-set itself never changes -- a deferred field is
+  // treated as satisfied, and the office sees exactly what still needs a
+  // measurement.
+  unknownFields: z.array(z.string()).optional(),
+
   // § 1 — Personal Info
   name: z.string().optional(),
   title: z.string().optional(),
@@ -207,6 +213,17 @@ const baseSchema = z.object({
 
 export type FormValues = z.infer<typeof baseSchema>
 
+/** Every key in the form, including the meta ones. */
+export const ALL_FIELD_NAMES = Object.keys(baseSchema.shape) as (keyof FormValues)[]
+
+/** Keys that are app bookkeeping rather than questions the user answers. */
+export const META_FIELD_NAMES: readonly (keyof FormValues)[] = ['mode', 'unknownFields']
+
+/** Every field that represents an actual question on the form. */
+export const QUESTION_FIELD_NAMES = ALL_FIELD_NAMES.filter(
+  (f) => !META_FIELD_NAMES.includes(f),
+)
+
 // ── Validation refinements ─────────────────────────────────────────────────
 
 const DOUBLE_DRUM_DIRECTIONS: ReadonlyArray<z.infer<typeof TravelDirection>> = [
@@ -214,125 +231,255 @@ const DOUBLE_DRUM_DIRECTIONS: ReadonlyArray<z.infer<typeof TravelDirection>> = [
   'Two Drum, Two Belt',
 ]
 
+export function isSpiral2Required(data: Partial<FormValues>): boolean {
+  return data.travelDirection != null && DOUBLE_DRUM_DIRECTIONS.includes(data.travelDirection)
+}
+
+/**
+ * Is a value present? One definition, shared by validation and by the progress
+ * indicator, so the two can never disagree about what "answered" means.
+ *
+ * Note numbers: 0 and negatives are real answers (an incoming product temp of
+ * 0 °F is data, not a blank), so they count as filled.
+ */
+export function isFilled(value: unknown): boolean {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'number') return true
+  return Boolean(value)
+}
+
+export interface RequiredRule {
+  field: keyof FormValues
+  /** Human label, used in both the error message and the missing-fields list. */
+  label: string
+  /** Which section this field lives in; see sectionMap.ts. */
+  section: SectionId
+  /** When absent, the field is always required. */
+  when?: (data: Partial<FormValues>) => boolean
+}
+
+export type SectionId = 'personal' | 'application' | 'system-info' | 'system-details' | 'project'
+
+const isFull = (d: Partial<FormValues>) => d.mode === 'full'
+
+/**
+ * The single source of truth for which fields are required, and when.
+ *
+ * Both `formSchema`'s superRefine and `getCompleteness` are derived from this
+ * list. Previously they were maintained separately and had drifted: the
+ * progress bar could read 100% while submit still failed.
+ */
+export const REQUIRED_RULES: readonly RequiredRule[] = [
+  // § 1 — Personal Info
+  { field: 'name', label: 'Name', section: 'personal' },
+  { field: 'companyName', label: 'Company Name', section: 'personal' },
+  { field: 'email', label: 'Email', section: 'personal' },
+  { field: 'title', label: 'Title', section: 'personal', when: isFull },
+  { field: 'phone', label: 'Phone', section: 'personal', when: isFull },
+  { field: 'countryOrRegion', label: 'Country or Region', section: 'personal', when: isFull },
+  { field: 'address', label: 'Address', section: 'personal', when: isFull },
+  { field: 'city', label: 'City', section: 'personal', when: isFull },
+  { field: 'stateProvince', label: 'State/Province', section: 'personal', when: isFull },
+  { field: 'zipPostalCode', label: 'Zip/Postal code', section: 'personal', when: isFull },
+
+  // § 2 — Application
+  { field: 'installationType', label: 'Installation type', section: 'application' },
+  { field: 'applicationType', label: 'Application Type', section: 'application' },
+  {
+    field: 'applicationTypeOther',
+    label: 'Specify application type',
+    section: 'application',
+    when: (d) => d.applicationType === 'Other',
+  },
+  { field: 'productProcessed', label: 'Product Processed', section: 'application' },
+  { field: 'incomingProductTemp', label: 'Incoming Product Temperature', section: 'application' },
+  { field: 'beltSpeed', label: 'Belt Speed', section: 'application' },
+  { field: 'howProductCarried', label: 'How product is carried', section: 'application', when: isFull },
+  { field: 'heatSource', label: 'Heat source', section: 'application', when: isFull },
+  { field: 'productProperties', label: 'Product Properties', section: 'application', when: isFull },
+  { field: 'productLoad', label: 'Product Load', section: 'application', when: isFull },
+  { field: 'productLoadUnit', label: 'Product Load unit', section: 'application', when: isFull },
+  { field: 'productDimL', label: 'Product Dimension L', section: 'application', when: isFull },
+  { field: 'productDimW', label: 'Product Dimension W', section: 'application', when: isFull },
+  { field: 'productDimH', label: 'Product Dimension H', section: 'application', when: isFull },
+  {
+    field: 'operatingEnvTemp',
+    label: 'Operating Environment Temperature',
+    section: 'application',
+    when: isFull,
+  },
+  {
+    field: 'minOperatingEnvTemp',
+    label: 'Minimum Operating Environment Temperature',
+    section: 'application',
+    when: isFull,
+  },
+  {
+    field: 'maxOperatingEnvTemp',
+    label: 'Maximum Operating Environment Temperature',
+    section: 'application',
+    when: isFull,
+  },
+  {
+    field: 'heatSourceSpecify',
+    label: 'Specify heat source',
+    section: 'application',
+    when: (d) => !!d.heatSource?.includes('Other Heat Source'),
+  },
+  {
+    field: 'preferredBeltSeriesOther',
+    label: 'Specify belt series',
+    section: 'application',
+    when: (d) => d.preferredBeltSeries === 'Other',
+  },
+  {
+    field: 'beltAccessoriesOther',
+    label: 'Specify belt accessories',
+    section: 'application',
+    when: (d) => !!d.beltAccessories?.includes('Other'),
+  },
+
+  // § 3 — System Information
+  { field: 'spiralManufacturer', label: 'Manufacturer of Spiral', section: 'system-info' },
+  { field: 'travelDirection', label: 'Travel Direction', section: 'system-info' },
+  { field: 'rotationDirection', label: 'Rotation Direction', section: 'system-info' },
+  { field: 'numTiersSpiral1', label: 'Number of Tiers — Spiral 1', section: 'system-info' },
+  { field: 'tierPitch', label: 'Tier Pitch', section: 'system-info' },
+  { field: 'takeUpTravelLength', label: 'Take Up Travel Length', section: 'system-info' },
+  // Belt length is deliberately optional -- often unknown in the field.
+  { field: 'drumBasis', label: 'Drum (measurement basis)', section: 'system-info' },
+  { field: 'drumValue', label: 'Drum value', section: 'system-info' },
+  { field: 'beltWidth', label: 'Belt Width', section: 'system-info' },
+  { field: 'infeedLength', label: 'Infeed Length (A)', section: 'system-info' },
+  { field: 'dischargeLength', label: 'Discharge Length (B)', section: 'system-info' },
+  { field: 'configurationSpiral1', label: 'Configuration — Spiral 1', section: 'system-info' },
+  { field: 'returnTypeSpiral1', label: 'Type of return — Spiral 1', section: 'system-info' },
+  {
+    field: 'numTiersSpiral2',
+    label: 'Number of Tiers — Spiral 2',
+    section: 'system-info',
+    when: isSpiral2Required,
+  },
+  {
+    field: 'distanceBetweenDrums',
+    label: 'Distance Between Drums',
+    section: 'system-info',
+    when: isSpiral2Required,
+  },
+  {
+    field: 'configurationSpiral2',
+    label: 'Configuration — Spiral 2',
+    section: 'system-info',
+    when: isSpiral2Required,
+  },
+  {
+    field: 'returnTypeSpiral2',
+    label: 'Type of return — Spiral 2',
+    section: 'system-info',
+    when: isSpiral2Required,
+  },
+
+  // § 4 — System Details
+  { field: 'numRails', label: 'Number of Rails', section: 'system-details' },
+  { field: 'railSpacing', label: 'Rail Spacing', section: 'system-details' },
+  { field: 'insideOverhang', label: 'Inside Overhang', section: 'system-details' },
+  { field: 'outsideOverhang', label: 'Outside Overhang', section: 'system-details' },
+  {
+    field: 'carrywayWearstripMaterial',
+    label: 'Carryway Wearstrip Material',
+    section: 'system-details',
+  },
+  {
+    field: 'carrywayWearstripMaterialOther',
+    label: 'Specify carryway wearstrip material',
+    section: 'system-details',
+    when: (d) => d.carrywayWearstripMaterial === 'Other',
+  },
+  { field: 'drumType', label: 'Type of Drum', section: 'system-details' },
+  {
+    field: 'cageBarDimA',
+    label: 'Cage Bar Dimension A',
+    section: 'system-details',
+    when: (d) => d.drumType === 'Cage',
+  },
+  {
+    field: 'cageBarDimB',
+    label: 'Cage Bar Dimension B',
+    section: 'system-details',
+    when: (d) => d.drumType === 'Cage',
+  },
+  {
+    field: 'cageBarDimC',
+    label: 'Cage Bar Dimension C',
+    section: 'system-details',
+    when: (d) => d.drumType === 'Cage',
+  },
+  { field: 'cageBarCapMaterial', label: 'Cage Bar Cap Material', section: 'system-details' },
+  {
+    field: 'cageBarCapMaterialOther',
+    label: 'Specify cage bar cap material',
+    section: 'system-details',
+    when: (d) => d.cageBarCapMaterial === 'Other',
+  },
+  {
+    field: 'capProfileOther',
+    label: 'Specify cap profile',
+    section: 'system-details',
+    when: (d) => d.capProfile === 'Other',
+  },
+]
+
+/** The rules that apply to a given set of answers, after conditions. */
+export function activeRequiredRules(data: Partial<FormValues>): RequiredRule[] {
+  return REQUIRED_RULES.filter((rule) => !rule.when || rule.when(data))
+}
+
+/**
+ * Fields the user has explicitly marked "I don't know / measure later".
+ * These satisfy their requirement so the rep is never hard-blocked by a
+ * number they physically cannot read today.
+ */
+export function isDeferred(data: Partial<FormValues>, field: keyof FormValues): boolean {
+  return Array.isArray(data.unknownFields) && data.unknownFields.includes(field as string)
+}
+
+/** Required rules that are neither answered nor explicitly deferred. */
+export function missingRequiredRules(data: Partial<FormValues>): RequiredRule[] {
+  return activeRequiredRules(data).filter(
+    (rule) => !isFilled(data[rule.field]) && !isDeferred(data, rule.field),
+  )
+}
+
 export const formSchema = baseSchema.superRefine((data, ctx) => {
   const req = (path: keyof FormValues, label: string) =>
     ctx.addIssue({ code: 'custom', message: `${label} is required`, path: [path] })
 
-  const isFullMode = data.mode === 'full'
-  const isSpiral2 = data.travelDirection != null &&
-    DOUBLE_DRUM_DIRECTIONS.includes(data.travelDirection)
+  // Required-field checks, derived from the table above.
+  for (const rule of missingRequiredRules(data)) {
+    req(rule.field, rule.label)
+  }
 
-  // § 1 — Customer essentials: required in both modes
-  if (!data.name?.trim()) req('name', 'Name')
-  if (!data.companyName?.trim()) req('companyName', 'Company Name')
-  if (!data.email?.trim()) {
-    req('email', 'Email')
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+  // Bespoke checks that aren't "is this filled in" questions.
+
+  if (data.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
     ctx.addIssue({ code: 'custom', message: 'Enter a valid email address', path: ['email'] })
   }
 
-  // Full-only Personal Info fields
-  if (isFullMode) {
-    if (!data.title?.trim()) req('title', 'Title')
-    if (!data.phone?.trim()) req('phone', 'Phone')
-    if (!data.countryOrRegion?.trim()) req('countryOrRegion', 'Country or Region')
-    if (!data.address?.trim()) req('address', 'Address')
-    if (!data.city?.trim()) req('city', 'City')
-    if (!data.stateProvince?.trim()) req('stateProvince', 'State/Province')
-    if (!data.zipPostalCode?.trim()) req('zipPostalCode', 'Zip/Postal code')
+  if (data.heatSource?.includes('No Heat Source') && data.heatSource.length > 1) {
+    ctx.addIssue({
+      code: 'custom',
+      message: '"No Heat Source" cannot be combined with other selections',
+      path: ['heatSource'],
+    })
   }
 
-  // § 2 — Application (Quick + Full share some required; Full adds more)
-  if (!data.installationType) req('installationType', 'Installation type')
-  if (!data.applicationType) req('applicationType', 'Application Type')
-  if (data.applicationType === 'Other' && !data.applicationTypeOther?.trim())
-    req('applicationTypeOther', 'Specify application type')
-  if (!data.productProcessed?.trim()) req('productProcessed', 'Product Processed')
-  if (data.incomingProductTemp == null) req('incomingProductTemp', 'Incoming Product Temperature')
-  if (data.beltSpeed == null) req('beltSpeed', 'Belt Speed')
-
-  // Full-only application fields
-  if (isFullMode) {
-    if (!data.howProductCarried) req('howProductCarried', 'How product is carried')
-    if (!data.heatSource?.length) req('heatSource', 'Heat source')
-    if (!data.productProperties?.length) req('productProperties', 'Product Properties')
-    if (data.productLoad == null) req('productLoad', 'Product Load')
-    if (!data.productLoadUnit) req('productLoadUnit', 'Product Load unit')
-    if (data.productDimL == null) req('productDimL', 'Product Dimension L')
-    if (data.productDimW == null) req('productDimW', 'Product Dimension W')
-    if (data.productDimH == null) req('productDimH', 'Product Dimension H')
-    if (data.operatingEnvTemp == null) req('operatingEnvTemp', 'Operating Environment Temperature')
-    if (data.minOperatingEnvTemp == null) req('minOperatingEnvTemp', 'Minimum Operating Environment Temperature')
-    if (data.maxOperatingEnvTemp == null) req('maxOperatingEnvTemp', 'Maximum Operating Environment Temperature')
-  }
-
-  // Heat source constraints (when provided)
-  if (data.heatSource) {
-    if (data.heatSource.includes('No Heat Source') && data.heatSource.length > 1)
-      ctx.addIssue({
-        code: 'custom',
-        message: '"No Heat Source" cannot be combined with other selections',
-        path: ['heatSource'],
-      })
-    if (data.heatSource.includes('Other Heat Source') && !data.heatSourceSpecify?.trim())
-      req('heatSourceSpecify', 'Specify heat source')
-  }
-
-  // Product Properties: None is mutually exclusive
-  if (data.productProperties?.includes('None') && data.productProperties.length > 1)
+  if (data.productProperties?.includes('None') && data.productProperties.length > 1) {
     ctx.addIssue({
       code: 'custom',
       message: '"None" cannot be combined with other product properties',
       path: ['productProperties'],
     })
-
-  // Belt series / accessories other
-  if (data.preferredBeltSeries === 'Other' && !data.preferredBeltSeriesOther?.trim())
-    req('preferredBeltSeriesOther', 'Specify belt series')
-  if (data.beltAccessories?.includes('Other') && !data.beltAccessoriesOther?.trim())
-    req('beltAccessoriesOther', 'Specify belt accessories')
-
-  // § 3 — System Information (required in both modes)
-  if (!data.spiralManufacturer?.trim()) req('spiralManufacturer', 'Manufacturer of Spiral')
-  if (!data.travelDirection) req('travelDirection', 'Travel Direction')
-  if (!data.rotationDirection) req('rotationDirection', 'Rotation Direction')
-  if (data.numTiersSpiral1 == null) req('numTiersSpiral1', 'Number of Tiers — Spiral 1')
-  if (data.tierPitch == null) req('tierPitch', 'Tier Pitch')
-  if (data.takeUpTravelLength == null) req('takeUpTravelLength', 'Take Up Travel Length')
-  // Belt length is optional (sometimes unknown in the field)
-  if (!data.drumBasis) req('drumBasis', 'Drum (measurement basis)')
-  if (data.drumValue == null) req('drumValue', 'Drum value')
-  if (data.beltWidth == null) req('beltWidth', 'Belt Width')
-  if (data.infeedLength == null) req('infeedLength', 'Infeed Length (A)')
-  if (data.dischargeLength == null) req('dischargeLength', 'Discharge Length (B)')
-  if (!data.configurationSpiral1) req('configurationSpiral1', 'Configuration — Spiral 1')
-  if (!data.returnTypeSpiral1) req('returnTypeSpiral1', 'Type of return — Spiral 1')
-
-  // Spiral 2 fields (conditional on double-drum travel direction)
-  if (isSpiral2) {
-    if (data.numTiersSpiral2 == null) req('numTiersSpiral2', 'Number of Tiers — Spiral 2')
-    if (data.distanceBetweenDrums == null) req('distanceBetweenDrums', 'Distance Between Drums')
-    if (!data.configurationSpiral2) req('configurationSpiral2', 'Configuration — Spiral 2')
-    if (!data.returnTypeSpiral2) req('returnTypeSpiral2', 'Type of return — Spiral 2')
   }
-
-  // § 4 — System Details (required in both modes)
-  if (data.numRails == null) req('numRails', 'Number of Rails')
-  if (data.railSpacing == null) req('railSpacing', 'Rail Spacing')
-  if (data.insideOverhang == null) req('insideOverhang', 'Inside Overhang')
-  if (data.outsideOverhang == null) req('outsideOverhang', 'Outside Overhang')
-  if (!data.carrywayWearstripMaterial) req('carrywayWearstripMaterial', 'Carryway Wearstrip Material')
-  if (data.carrywayWearstripMaterial === 'Other' && !data.carrywayWearstripMaterialOther?.trim())
-    req('carrywayWearstripMaterialOther', 'Specify carryway wearstrip material')
-  if (!data.drumType) req('drumType', 'Type of Drum')
-  if (data.drumType === 'Cage') {
-    if (data.cageBarDimA == null) req('cageBarDimA', 'Cage Bar Dimension A')
-    if (data.cageBarDimB == null) req('cageBarDimB', 'Cage Bar Dimension B')
-    if (data.cageBarDimC == null) req('cageBarDimC', 'Cage Bar Dimension C')
-  }
-  if (!data.cageBarCapMaterial) req('cageBarCapMaterial', 'Cage Bar Cap Material')
-  if (data.cageBarCapMaterial === 'Other' && !data.cageBarCapMaterialOther?.trim())
-    req('cageBarCapMaterialOther', 'Specify cage bar cap material')
-  if (data.capProfile === 'Other' && !data.capProfileOther?.trim())
-    req('capProfileOther', 'Specify cap profile')
 })

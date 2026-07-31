@@ -6,6 +6,7 @@ import {
   orderBy,
   query,
   setDoc,
+  updateDoc,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { StoredAssessment } from './db'
@@ -30,6 +31,21 @@ export function subscribeAssessments(
 
 export async function putAssessment(uid: string, a: StoredAssessment): Promise<void> {
   await setDoc(assessmentDoc(uid, a.id), a)
+}
+
+/**
+ * Patch metadata on an existing record without touching `data`.
+ *
+ * Deliberately `updateDoc`, not `setDoc({merge:true})`: merge is deep for
+ * maps, so a merged write against `data` could never *clear* an answer. This
+ * helper is only for top-level metadata (title, status), never the answers.
+ */
+export async function updateAssessmentFields(
+  uid: string,
+  id: string,
+  patch: Partial<Pick<StoredAssessment, 'title' | 'updatedAt'>>,
+): Promise<void> {
+  await updateDoc(assessmentDoc(uid, id), patch)
 }
 
 export async function deleteAssessmentDoc(uid: string, id: string): Promise<void> {

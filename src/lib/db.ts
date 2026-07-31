@@ -1,13 +1,18 @@
 import { openDB, type IDBPDatabase } from 'idb'
 import type { FormValues } from '../schema/formSchema'
 
+export type AssessmentStatus = 'draft' | 'queued' | 'synced' | 'failed'
+
 export interface StoredAssessment {
   id: string
   data: Partial<FormValues>
-  status: 'draft' | 'queued' | 'synced' | 'failed'
+  status: AssessmentStatus
   createdAt: number
   updatedAt: number
   syncedAt?: number
+  /** User-chosen name. Optional and backward compatible: records saved before
+   *  rename existed fall back to a title derived from the form data. */
+  title?: string
 }
 
 let _db: IDBPDatabase | null = null

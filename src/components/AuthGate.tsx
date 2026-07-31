@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import intraloxLogo from '../assets/intralox-logo.svg'
-import { useAuthStore } from '../store/authStore'
+import { useAuthStore, SIGNUP_DOMAIN_NOT_ALLOWED } from '../store/authStore'
+import { SIGNUP_DOMAIN_MESSAGE } from '../lib/allowedEmails'
 
 type Mode = 'signin' | 'create' | 'reset'
 
 function friendlyError(msg: string): string {
+  if (msg.includes(SIGNUP_DOMAIN_NOT_ALLOWED)) {
+    return SIGNUP_DOMAIN_MESSAGE
+  }
   if (msg.includes('invalid-credential') || msg.includes('wrong-password') || msg.includes('user-not-found')) {
     return 'Incorrect email or password.'
   }
@@ -146,6 +150,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 inputMode="email"
                 className="w-full border border-gray-300 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {mode === 'create' && (
+                <p className="text-sm text-gray-600 mt-1.5">
+                  Use your Intralox work email.
+                </p>
+              )}
             </div>
 
             {mode !== 'reset' && (
@@ -171,7 +180,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full bg-[#1e3a5f] text-white font-semibold py-3.5 rounded-xl text-base disabled:opacity-40"
+              className="w-full bg-brand text-white font-semibold py-3.5 rounded-xl text-base disabled:opacity-40"
             >
               {submitLabel}
             </button>
@@ -181,19 +190,22 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         <div className="text-center text-sm space-y-2 pt-1">
           {mode === 'signin' && (
             <>
+              {/* Almost everyone here is signing in, not signing up -- so
+                  "Forgot password" gets the emphasis and "Create account"
+                  is quiet. */}
               <button
                 type="button"
                 onClick={() => switchMode('reset')}
-                className="block w-full text-gray-400 hover:text-gray-600"
+                className="block w-full text-blue-700 hover:underline font-medium min-h-[44px]"
               >
                 Forgot password?
               </button>
               <button
                 type="button"
                 onClick={() => switchMode('create')}
-                className="text-blue-700 hover:underline font-medium"
+                className="block w-full text-gray-600 hover:text-gray-900 min-h-[44px]"
               >
-                Create account
+                First time here? Create an account
               </button>
             </>
           )}
@@ -201,7 +213,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => switchMode('signin')}
-              className="text-blue-700 hover:underline"
+              className="text-blue-700 hover:underline min-h-[44px]"
             >
               Back to sign in
             </button>

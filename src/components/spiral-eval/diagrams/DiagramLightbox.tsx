@@ -22,7 +22,7 @@ export function DiagramLightbox({ src, alt, label }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-300 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-900 font-medium text-sm transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-300 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-brand font-medium text-sm transition-colors"
       >
         {/* Magnifier + plus icon */}
         <svg className="w-4 h-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -40,7 +40,7 @@ export function DiagramLightbox({ src, alt, label }: Props) {
         <div className="fixed inset-0 z-50 flex flex-col bg-white">
 
           {/* Top bar */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#1e3a5f] text-white shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-brand text-white shrink-0">
             <span className="font-bold text-base leading-snug pr-4">{label}</span>
             <button
               type="button"
@@ -66,7 +66,7 @@ export function DiagramLightbox({ src, alt, label }: Props) {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-full py-5 bg-[#1e3a5f] text-white font-bold text-lg tracking-wide shrink-0"
+            className="w-full py-5 bg-brand text-white font-bold text-lg tracking-wide shrink-0"
           >
             ✕  Close
           </button>

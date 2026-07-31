@@ -31,7 +31,7 @@ import {
 
 interface CalculatorTabProps {
   inputs: CalculatorInputs;
-  onChange: (field: keyof CalculatorInputs, value: any) => void;
+  onChange: <K extends keyof CalculatorInputs>(field: K, value: CalculatorInputs[K]) => void;
   addNote: () => void;
   updateNote: (index: number, value: string) => void;
   removeNote: (index: number) => void;
@@ -142,27 +142,31 @@ export function CalculatorTab({ inputs, onChange, addNote, updateNote, removeNot
 
             {/* Labor Reallocation Checkbox */}
             <div className="sm:col-span-2">
-              <div
+              {/* One handler only. This previously had an onClick on the
+                  wrapper AND onCheckedChange on the box, so a tap that landed
+                  on the box itself toggled twice and did nothing at all --
+                  the control appeared broken. The <label> gives the same
+                  large tap target with a single toggle. */}
+              <Label
+                htmlFor="labor-reallocated"
                 className="flex items-start gap-3 p-4 rounded-md bg-primary/[0.03] border border-border cursor-pointer hover:bg-primary/[0.06] transition-colors"
-                onClick={() => onChange('laborReallocated', !inputs.laborReallocated)}
-                role="presentation"
               >
                 <Checkbox
                   id="labor-reallocated"
                   checked={inputs.laborReallocated}
-                  onCheckedChange={(checked) => onChange('laborReallocated', checked)}
+                  onCheckedChange={(checked) => onChange('laborReallocated', checked === true)}
                   className="mt-0.5 size-5"
                   aria-describedby="labor-reallocated-desc"
                 />
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="labor-reallocated" className="text-sm font-semibold cursor-pointer">
+                <span className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">
                     Labor will be reallocated (not eliminated)
-                  </Label>
-                  <p id="labor-reallocated-desc" className="text-xs text-muted-foreground">
+                  </span>
+                  <span id="labor-reallocated-desc" className="text-xs text-muted-foreground">
                     Check this if maintenance staff will be reassigned to other work. Labor hours will show as "capacity gained" instead of dollar savings.
-                  </p>
-                </div>
-              </div>
+                  </span>
+                </span>
+              </Label>
             </div>
 
             <NumberWithSelect
