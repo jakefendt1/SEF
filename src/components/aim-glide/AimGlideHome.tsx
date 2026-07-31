@@ -34,7 +34,6 @@ import {
   FileDown,
   Save,
   FolderOpen,
-  Trash2,
   RotateCcw,
   MoreVertical,
   Check,
@@ -163,20 +162,6 @@ export function AimGlideHome() {
                         }}>
                           <FolderOpen className="size-4" />
                           {sc.name}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      {calc.savedCalculations.map((sc) => (
-                        <DropdownMenuItem
-                          key={`del-${sc.name}`}
-                          variant="destructive"
-                          onClick={() => {
-                            calc.deleteCalculation(sc.name);
-                            toast.success(`Deleted: ${sc.name}`);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                          Delete: {sc.name}
                         </DropdownMenuItem>
                       ))}
                       <DropdownMenuSeparator />

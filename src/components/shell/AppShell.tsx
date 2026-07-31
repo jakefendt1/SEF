@@ -1,14 +1,25 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'wouter'
 import intraloxLogo from '../../assets/intralox-logo.svg'
 import { InstallPrompt } from '../InstallPrompt'
 import { useAuthStore } from '../../store/authStore'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 import { migrateLegacyAssessmentsForUser } from '../../lib/migrateLegacyAssessments'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, user, signOut } = useAuthStore()
   const { subscribe, unsubscribe, flushQueue } = useAssessmentsStore()
+  const [signOutOpen, setSignOutOpen] = useState(false)
 
   useEffect(() => {
     const uid = user?.uid
@@ -43,8 +54,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
             <button
               type="button"
-              onClick={() => { if (confirm('Sign out?')) signOut() }}
-              className="text-xs text-blue-300 hover:text-white border border-blue-500 hover:border-white rounded px-2 py-1"
+              onClick={() => setSignOutOpen(true)}
+              className="text-xs text-blue-300 hover:text-white border border-blue-500 hover:border-white rounded px-2 py-1 min-h-[32px]"
             >
               Sign out
             </button>
@@ -55,6 +66,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <InstallPrompt />
 
       <main className="bg-gray-50">{children}</main>
+
+      <AlertDialog open={signOutOpen} onOpenChange={setSignOutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll need to sign in again to get back to your assessments and calculations.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => signOut()}>Sign out</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

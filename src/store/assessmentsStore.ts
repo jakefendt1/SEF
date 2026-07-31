@@ -6,16 +6,22 @@ import {
   subscribeAssessments,
 } from '../lib/firestoreAssessments'
 import { submitToSheets } from '../lib/api'
+import { countFilled } from '../lib/autosaveGuard'
 import type { FormValues } from '../schema/formSchema'
+
+export type SubmitResult =
+  | { ok: true }
+  | { ok: false; reason: 'offline' | 'error'; message: string }
 
 interface Store {
   uid: string | null
   assessments: StoredAssessment[]
+  loaded: boolean
   subscribe: (uid: string) => void
   unsubscribe: () => void
   upsert: (a: StoredAssessment) => Promise<void>
   saveDraft: (id: string, data: Partial<FormValues>) => Promise<void>
-  submitAssessment: (id: string, data: FormValues) => Promise<'synced' | 'queued'>
+  submitAssessment: (id: string, data: FormValues) => Promise<SubmitResult>
   retryFailed: (id: string) => Promise<void>
   flushQueue: () => Promise<void>
   deleteAssessment: (id: string) => Promise<void>
@@ -26,18 +32,19 @@ let unsub: (() => void) | null = null
 export const useAssessmentsStore = create<Store>((set, get) => ({
   uid: null,
   assessments: [],
+  loaded: false,
 
   subscribe(uid) {
     if (get().uid === uid && unsub) return
     unsub?.()
-    set({ uid, assessments: [] })
-    unsub = subscribeAssessments(uid, (assessments) => set({ assessments }))
+    set({ uid, assessments: [], loaded: false })
+    unsub = subscribeAssessments(uid, (assessments) => set({ assessments, loaded: true }))
   },
 
   unsubscribe() {
     unsub?.()
     unsub = null
-    set({ uid: null, assessments: [] })
+    set({ uid: null, assessments: [], loaded: false })
   },
 
   async upsert(a) {
@@ -50,12 +57,25 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
     const { assessments } = get()
     const now = Date.now()
     const existing = assessments.find((a) => a.id === id)
+
+    // Backstop against a blank/near-empty payload clobbering a record that
+    // already has real data -- independent of whatever guards the caller
+    // has, so a future view-layer bug can't reproduce the same data loss.
+    if (existing && countFilled(existing.data) > 0 && countFilled(data) === 0) {
+      console.error('[saveDraft] refused to overwrite non-empty assessment with empty data', id)
+      return
+    }
+
     await get().upsert({
       id,
       data,
-      status: 'draft',
+      // Preserve whatever status the record already had -- merely opening
+      // a submitted assessment to look at it must not silently demote it
+      // back to Draft.
+      status: existing?.status ?? 'draft',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      ...(existing?.syncedAt !== undefined ? { syncedAt: existing.syncedAt } : {}),
     })
   },
 
@@ -73,16 +93,24 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
 
     if (!navigator.onLine) {
       await get().upsert(base)
-      return 'queued'
+      return {
+        ok: false,
+        reason: 'offline',
+        message: "Saved on this device. It'll send to the office when you're back online.",
+      }
     }
 
     try {
       await submitToSheets(id, data)
       await get().upsert({ ...base, status: 'synced', syncedAt: now })
-      return 'synced'
+      return { ok: true }
     } catch {
       await get().upsert({ ...base, status: 'failed' })
-      return 'queued'
+      return {
+        ok: false,
+        reason: 'error',
+        message: "Couldn't reach the office. Your answers are saved here -- try again.",
+      }
     }
   },
 

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import { formSchema, type FormValues } from '../../schema/formSchema'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 import { getCompleteness } from '../../lib/completeness'
+import { shouldAutosave } from '../../lib/autosaveGuard'
+import type { StoredAssessment } from '../../lib/db'
 import { PersonalInfoSection } from './sections/PersonalInfoSection'
 import { ApplicationSection } from './sections/ApplicationSection'
 import { SystemInfoSection } from './sections/SystemInfoSection'
@@ -13,18 +16,19 @@ import { cn } from '../../lib/utils'
 
 interface Props {
   assessmentId: string
-  initialData?: Partial<FormValues>
+  existing?: StoredAssessment
   onDone: () => void
 }
 
-export function FormView({ assessmentId, initialData, onDone }: Props) {
+export function FormView({ assessmentId, existing, onDone }: Props) {
   const { saveDraft, submitAssessment } = useAssessmentsStore()
+  const initialData = existing?.data
 
   const {
     control,
     handleSubmit,
     setValue,
-    formState: { isSubmitting, errors },
+    formState: { isSubmitting, isDirty, errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { mode: 'quick', ...initialData },
@@ -38,14 +42,19 @@ export function FormView({ assessmentId, initialData, onDone }: Props) {
   const allValues = useWatch({ control }) as Partial<FormValues>
   const { filled, total, pct } = getCompleteness(allValues, mode ?? 'quick')
 
-  // Autosave — debounced 600 ms
+  // Autosave — debounced 600 ms. `SpiralEvalFormRoute` guarantees this
+  // component never mounts before we know whether `existing` is real, so
+  // hydration is complete as soon as we're rendering at all -- but we still
+  // gate on `isDirty` and run the emptiness backstop, since a future
+  // call-site change is exactly the kind of thing that reintroduces this bug.
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const valuesRef = useRef(allValues)
   valuesRef.current = allValues
 
   const doSave = useCallback(() => {
+    if (!shouldAutosave({ hydrated: true, isDirty, incoming: valuesRef.current, existing })) return
     saveDraft(assessmentId, valuesRef.current)
-  }, [assessmentId, saveDraft])
+  }, [assessmentId, saveDraft, isDirty, existing])
 
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -55,9 +64,20 @@ export function FormView({ assessmentId, initialData, onDone }: Props) {
   }, [JSON.stringify(allValues)])
 
   async function onSubmit(data: FormValues) {
-    await submitAssessment(assessmentId, data)
-    alert('Assessment saved.')
-    onDone()
+    const result = await submitAssessment(assessmentId, data)
+    if (result.ok) {
+      toast.success('Sent to the office.')
+      onDone()
+      return
+    }
+    if (result.reason === 'offline') {
+      toast.info(result.message)
+      onDone()
+      return
+    }
+    // Network/server error: stay on the form, nothing is lost (it's already
+    // saved locally as a draft), let the user retry.
+    toast.error(result.message)
   }
 
   const hasErrors = Object.keys(errors).length > 0

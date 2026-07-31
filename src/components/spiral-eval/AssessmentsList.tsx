@@ -3,6 +3,16 @@ import { cn } from '../../lib/utils'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 import { downloadSingleCSV, downloadAllCSV } from '../../lib/csvExport'
 import type { StoredAssessment } from '../../lib/db'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog'
 
 async function downloadPDF(a: StoredAssessment) {
   const { downloadAssessmentPDF } = await import('../../pdf/generatePDF')
@@ -30,12 +40,17 @@ const STATUS_COLORS: Record<StoredAssessment['status'], string> = {
 function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string) => void }) {
   const { retryFailed, deleteAssessment } = useAssessmentsStore()
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const company = (a.data?.companyName as string | undefined) || 'Unnamed'
   const name = (a.data?.name as string | undefined) || ''
   const date = new Date(a.updatedAt).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
+  // Has this record been edited since it was last sent to the office? The
+  // status itself is preserved through edits now (see assessmentsStore),
+  // so this is the honest signal that a re-submit may be needed.
+  const editedSinceSubmit = a.status === 'synced' && a.updatedAt > (a.syncedAt ?? 0)
 
   async function handlePDF() {
     setPdfLoading(true)
@@ -50,6 +65,11 @@ function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string
           <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', STATUS_COLORS[a.status])}>
             {STATUS_LABELS[a.status]}
           </span>
+          {editedSinceSubmit && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+              Edited since sent
+            </span>
+          )}
         </div>
         {name && <p className="text-sm text-gray-500 mt-0.5">{name}</p>}
         <p className="text-xs text-gray-400 mt-1">{date}</p>
@@ -83,12 +103,32 @@ function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string
           CSV
         </button>
         <button
-          onClick={() => { if (confirm('Delete this assessment?')) deleteAssessment(a.id) }}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white text-gray-400 hover:text-red-500 min-h-[32px]"
+          onClick={() => setDeleteOpen(true)}
+          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white text-red-600 hover:bg-red-50 min-h-[32px]"
         >
           Delete
         </button>
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{company}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {name ? `${name} — ` : ''}{date}. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAssessment(a.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
