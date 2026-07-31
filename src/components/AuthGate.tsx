@@ -89,7 +89,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
         <div className="flex flex-col items-center gap-2">
           <img src={intraloxLogo} alt="Intralox" className="h-10 w-auto" />
-          <h1 className="text-xl font-bold text-gray-900">Spiral Eval</h1>
+          <h1 className="text-xl font-bold text-gray-900">Intralox Account Manager Hub</h1>
           <p className="text-sm text-gray-500">
             {mode === 'signin' ? 'Sign in to continue'
               : mode === 'create' ? 'Create your account'

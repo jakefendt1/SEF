@@ -1,17 +1,25 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'icon.svg'],
       manifest: {
-        name: 'Spiral Eval',
-        short_name: 'SpiralEval',
-        description: 'Intralox spiral conveyor field evaluation',
+        name: 'Intralox Account Manager Hub',
+        short_name: 'AM Hub',
+        description: 'Intralox account manager tools: Spiral Eval field assessments and AIM Glide ROI calculator',
         theme_color: '#1e3a5f',
         background_color: '#ffffff',
         display: 'standalone',

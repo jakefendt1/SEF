@@ -31,7 +31,7 @@ export function InstallPrompt() {
   return (
     <div className="bg-blue-900 text-white px-4 py-3 flex items-center justify-between gap-3">
       <p className="text-sm">Add Spiral Eval to your home screen for offline access.</p>
-      <div className="flex gap-2 flex-shrink-0">
+      <div className="flex gap-2 shrink-0">
         <button
           onClick={() => setDismissed(true)}
           className="text-blue-300 text-xs hover:text-white"
