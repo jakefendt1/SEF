@@ -49,7 +49,14 @@ src/
     ui/          shadcn primitives (generated; avoid hand-editing)
   pdf/           React-PDF document for the evaluation export
 api/             Vercel serverless function that writes to Google Sheets
+public/          Static assets, including the in-app measurement diagrams
+docs/            Data model, original brief, full-resolution diagram sources
 ```
+
+Two other files worth knowing about: [`CLAUDE.md`](CLAUDE.md) records the
+judgement calls behind the rules below — who the app is for, and which
+invariants exist because something specific broke. [`docs/`](docs/README.md)
+holds the form's field-level contract with the office.
 
 ### The rules that keep this maintainable
 
@@ -98,7 +105,9 @@ progress; anything they genuinely cannot measure gets marked
 - `users/{uid}/roiCalculations/{id}` — see `StoredRoiCalculation`
 
 Ownership is per-uid and enforced in `firestore.rules`; no user can read
-another's records. `DATA_MODEL.md` has the field-level detail.
+another's records. [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) has the
+field-level detail — it is the contract with the office, and the 100 schema
+tests encode it.
 
 ---
 
