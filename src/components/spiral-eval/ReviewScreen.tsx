@@ -26,7 +26,7 @@ export function ReviewScreen({ assessmentId, completeness, isSubmitting, onSubmi
 
   return (
     <div className="px-4 py-5 max-w-2xl mx-auto pb-12">
-      <h2 className="text-2xl font-semibold text-gray-900">Review &amp; send</h2>
+      <h2 className="text-2xl font-semibold text-gray-900">Review &amp; finish</h2>
 
       {missing.length === 0 ? (
         <div className="mt-4 flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
@@ -96,7 +96,7 @@ export function ReviewScreen({ assessmentId, completeness, isSubmitting, onSubmi
                 : 'bg-brand text-white hover:bg-brand-hover active:bg-brand-active',
             )}
           >
-            {isSubmitting ? 'Sending…' : 'Send to the office'}
+            {isSubmitting ? 'Saving…' : 'Mark as complete'}
           </button>
         )}
         <Link
@@ -108,7 +108,8 @@ export function ReviewScreen({ assessmentId, completeness, isSubmitting, onSubmi
       </div>
 
       <p className="text-sm text-gray-600 mt-4 text-center">
-        Your answers are saved as you type. Sending shares them with the office.
+        Your answers save as you type — marking it complete just flags it as finished.
+        You can reopen it any time.
       </p>
     </div>
   )

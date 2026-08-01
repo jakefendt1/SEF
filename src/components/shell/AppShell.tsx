@@ -22,7 +22,7 @@ import {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, user, signOut } = useAuthStore()
-  const { subscribe, unsubscribe, flushQueue } = useAssessmentsStore()
+  const { subscribe, unsubscribe } = useAssessmentsStore()
   const subscribeRoi = useRoiCalculationsStore((s) => s.subscribe)
   const unsubscribeRoi = useRoiCalculationsStore((s) => s.unsubscribe)
   const roiLoaded = useRoiCalculationsStore((s) => s.loaded)
@@ -62,14 +62,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       (err) => console.error('[importLegacyRoiCalculations]', err),
     )
   }, [user?.uid, roiLoaded])
-
-  useEffect(() => {
-    function handleOnline() {
-      flushQueue()
-    }
-    window.addEventListener('online', handleOnline)
-    return () => window.removeEventListener('online', handleOnline)
-  }, [flushQueue])
 
   return (
     <div className="min-h-screen bg-gray-50">

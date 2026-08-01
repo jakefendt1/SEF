@@ -11,10 +11,10 @@ function makeExisting(overrides: Partial<StoredAssessment> = {}): StoredAssessme
       email: 'jane@acme.com',
       installationType: 'New',
     },
-    status: 'synced',
+    status: 'complete',
     createdAt: 1000,
     updatedAt: 2000,
-    syncedAt: 2000,
+    completedAt: 2000,
     ...overrides,
   }
 }

@@ -25,7 +25,16 @@ Concretely, and non-negotiably:
 
 **Never let the UI claim something happened when it didn't.** Submit used to
 say "Assessment saved" on both a successful send and a total network failure.
-`submitAssessment` returns a discriminated result; branch on it honestly.
+That whole class of problem is now gone, because there is nothing to send: the
+Google Sheet it delivered to was never read by anyone, so delivery was removed
+and "Submit" became "Mark as complete" -- a local write with no failure path.
+If you ever add a real delivery back, return a discriminated result and branch
+on it honestly rather than assuming success.
+
+**Old records keep the old status values forever.** `normalizeAssessment`
+translates `queued`/`synced`/`failed` to `complete` on read. Do not be tempted
+to "clean them up" with a migration write -- reading a record must never cause
+a write, which is the bug class that once destroyed completed evaluations.
 
 **The progress bar and the validator must never be two lists.** They drifted,
 and the bar read 100% while Submit bounced the user. Both derive from
@@ -34,7 +43,7 @@ wording — see the table in the README. If you add a concept with two possible
 homes, give it one home and a test.
 
 **Writes to an assessment are whole-document.** `saveDraft` uses `setDoc`, so
-anything it doesn't restate is erased. `status`, `syncedAt` and `title` are
+anything it doesn't restate is erased. `status`, `completedAt` and `title` are
 carried through explicitly. Metadata-only changes go via
 `updateAssessmentFields` (`updateDoc`) instead. Do not "simplify" this to
 `setDoc({merge: true})` — merge is deep for maps, so a user could then never
@@ -58,18 +67,15 @@ eye while the maths treated them differently.
   all of §3/§4 is a *proposed* interpretation pending confirmation from
   Jeremy/BDA. Changing it alters the required set and breaks tests. It is a
   product decision, not a cleanup opportunity.
-- **Sheet column order.** Agreed once and frozen. If a field's mapping is
-  unclear, ask — don't invent a column.
-
 ## Secrets
 
-The Google service-account credential is read only by `api/submit.ts`, only
-from a Vercel environment variable. It must never appear in the client bundle
-(anything `VITE_`-prefixed is compiled into it), a committed file, or a log
-line. The repo stays private: it carries customer PII flow.
+There are no server-side secrets left. The Google Sheets integration and its
+service-account credential were removed along with the delivery mechanism, so
+the app is static files plus Firebase.
 
-Firebase web config (`VITE_FIREBASE_*`) is *not* a secret — access is
-controlled by `firestore.rules`.
+Firebase web config (`VITE_FIREBASE_*`) is *not* a secret — it is compiled into
+the browser bundle by design, and access is controlled by `firestore.rules`.
+The repo still stays private: it carries customer PII flow.
 
 ## Before you push
 

@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 import { downloadSingleCSV, downloadAllCSV } from '../../lib/csvExport'
 import { assessmentTitle, assessmentSubtitle, assessmentSearchText } from '../../lib/assessmentTitle'
-import { STATUS_PRESENTATION, isEditedSinceSent } from '../../lib/statusLabels'
+import { STATUS_PRESENTATION, isEditedSinceComplete } from '../../lib/statusLabels'
 import type { StoredAssessment } from '../../lib/db'
 import {
   AlertDialog,
@@ -44,7 +44,7 @@ interface Props {
 }
 
 function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string) => void }) {
-  const { retryFailed, deleteAssessment, renameAssessment, duplicateAssessment } =
+  const { deleteAssessment, renameAssessment, duplicateAssessment, reopenAssessment } =
     useAssessmentsStore()
   const [pdfLoading, setPdfLoading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -54,7 +54,7 @@ function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string
   const title = assessmentTitle(a)
   const subtitle = assessmentSubtitle(a)
   const status = STATUS_PRESENTATION[a.status]
-  const editedSinceSent = isEditedSinceSent(a)
+  const editedSinceComplete = isEditedSinceComplete(a)
   const date = new Date(a.updatedAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -92,9 +92,9 @@ function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string
             >
               {status.label}
             </span>
-            {editedSinceSent && (
+            {editedSinceComplete && (
               <span className="text-sm font-medium px-2 py-0.5 rounded-full bg-blue-50 text-brand">
-                Changed since sending
+                Changed since you finished it
               </span>
             )}
           </span>
@@ -130,8 +130,10 @@ function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string
               <DropdownMenuItem onClick={() => downloadSingleCSV(a)}>
                 Download spreadsheet
               </DropdownMenuItem>
-              {a.status === 'failed' && (
-                <DropdownMenuItem onClick={() => retryFailed(a.id)}>Try sending again</DropdownMenuItem>
+              {a.status === 'complete' && (
+                <DropdownMenuItem onClick={() => void reopenAssessment(a.id)}>
+                  Reopen (mark as in progress)
+                </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
               {/* Destructive action last, and never adjacent to "open". */}
@@ -145,19 +147,6 @@ function AssessmentRow({ a, onEdit }: { a: StoredAssessment; onEdit: (id: string
           </DropdownMenu>
         </div>
       </div>
-
-      {a.status === 'failed' && (
-        <div className="bg-red-50 border-t border-red-100 px-4 py-2 flex items-center justify-between gap-2">
-          <p className="text-sm text-red-800">{status.help}</p>
-          <button
-            type="button"
-            onClick={() => retryFailed(a.id)}
-            className="text-sm font-semibold text-red-800 underline min-h-[44px] px-2"
-          >
-            Try again
-          </button>
-        </div>
-      )}
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent>

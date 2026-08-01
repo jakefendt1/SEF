@@ -12,6 +12,7 @@ import type { StoredAssessment } from '../../lib/db'
 import { FormHub } from './FormHub'
 import { SectionScreen } from './SectionScreen'
 import { ReviewScreen } from './ReviewScreen'
+import { AllSectionsScreen } from './AllSectionsScreen'
 
 interface Props {
   assessmentId: string
@@ -26,7 +27,7 @@ export interface FormScreenProps {
 }
 
 export function SpiralEvalFormShell({ assessmentId, existing, section }: Props) {
-  const { saveDraft, submitAssessment } = useAssessmentsStore()
+  const { saveDraft, markComplete } = useAssessmentsStore()
   const [, navigate] = useLocation()
   const initialData = existing?.data
 
@@ -85,23 +86,28 @@ export function SpiralEvalFormShell({ assessmentId, existing, section }: Props) 
   }, [])
 
   async function onSubmit(data: FormValues) {
-    const result = await submitAssessment(assessmentId, data)
-    if (result.ok) {
-      toast.success('Sent to the office.')
-      navigate('/spiral-eval')
-      return
-    }
-    if (result.reason === 'offline') {
-      toast.info(result.message)
-      navigate('/spiral-eval')
-      return
-    }
-    // Real failure: stay put. Nothing is lost -- it's already saved -- but the
-    // user needs to know it did not go through.
-    toast.error(result.message)
+    // A local write that Firestore accepts with or without a connection, so
+    // there is no failure path to report and nothing to leave the user
+    // wondering about.
+    await markComplete(assessmentId, data)
+    toast.success('Marked complete.')
+    navigate('/spiral-eval')
   }
 
   const submit = handleSubmit(onSubmit)
+
+  if (section === 'all') {
+    return (
+      <AllSectionsScreen
+        assessmentId={assessmentId}
+        control={control}
+        values={values}
+        completeness={completeness}
+        isSubmitting={isSubmitting}
+        onSubmit={submit}
+      />
+    )
+  }
 
   if (section === 'review') {
     return (

@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter'
 import { AssessmentsList } from './AssessmentsList'
+import { evaluationHref } from '../../lib/formLayout'
 
 export function SpiralEvalListRoute() {
   const [, navigate] = useLocation()
@@ -9,7 +10,8 @@ export function SpiralEvalListRoute() {
   }
 
   function openAssessment(id: string) {
-    navigate(`/spiral-eval/${id}`)
+    // Respect whichever layout this rep last chose.
+    navigate(evaluationHref(id))
   }
 
   return <AssessmentsList onNew={startNewAssessment} onEdit={openAssessment} />

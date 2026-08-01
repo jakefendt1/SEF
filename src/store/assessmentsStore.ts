@@ -6,14 +6,9 @@ import {
   subscribeAssessments,
   updateAssessmentFields,
 } from '../lib/firestoreAssessments'
-import { submitToSheets } from '../lib/api'
 import { countFilled } from '../lib/autosaveGuard'
 import { duplicateTitle } from '../lib/assessmentTitle'
 import type { FormValues } from '../schema/formSchema'
-
-export type SubmitResult =
-  | { ok: true }
-  | { ok: false; reason: 'offline' | 'error'; message: string }
 
 interface Store {
   uid: string | null
@@ -23,9 +18,8 @@ interface Store {
   unsubscribe: () => void
   upsert: (a: StoredAssessment) => Promise<void>
   saveDraft: (id: string, data: Partial<FormValues>) => Promise<void>
-  submitAssessment: (id: string, data: FormValues) => Promise<SubmitResult>
-  retryFailed: (id: string) => Promise<void>
-  flushQueue: () => Promise<void>
+  markComplete: (id: string, data: FormValues) => Promise<void>
+  reopenAssessment: (id: string) => Promise<void>
   deleteAssessment: (id: string) => Promise<void>
   renameAssessment: (id: string, title: string) => Promise<void>
   /** Returns the new record's id, or null if the source was not found. */
@@ -80,71 +74,46 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
       status: existing?.status ?? 'draft',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-      ...(existing?.syncedAt !== undefined ? { syncedAt: existing.syncedAt } : {}),
+      ...(existing?.completedAt !== undefined ? { completedAt: existing.completedAt } : {}),
       // This is a whole-document write, so anything not restated here is
       // erased -- the user's chosen name included.
       ...(existing?.title !== undefined ? { title: existing.title } : {}),
     })
   },
 
-  async submitAssessment(id, data) {
+  async markComplete(id, data) {
     const { assessments } = get()
     const now = Date.now()
     const existing = assessments.find((a) => a.id === id)
-    const base: StoredAssessment = {
+
+    // Purely a local write. It used to also push a row to a Google Sheet,
+    // which is why this once had offline/queued/failed states -- there is
+    // nothing left that can fail here. Firestore's offline cache accepts the
+    // write with no connection and reconciles it later.
+    await get().upsert({
       id,
       data,
-      status: 'queued',
+      status: 'complete',
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      completedAt: now,
       ...(existing?.title !== undefined ? { title: existing.title } : {}),
-    }
-
-    if (!navigator.onLine) {
-      await get().upsert(base)
-      return {
-        ok: false,
-        reason: 'offline',
-        message: "Saved on this device. It'll send to the office when you're back online.",
-      }
-    }
-
-    try {
-      await submitToSheets(id, data)
-      await get().upsert({ ...base, status: 'synced', syncedAt: now })
-      return { ok: true }
-    } catch {
-      await get().upsert({ ...base, status: 'failed' })
-      return {
-        ok: false,
-        reason: 'error',
-        message: "Couldn't reach the office. Your answers are saved here -- try again.",
-      }
-    }
+    })
   },
 
-  async retryFailed(id) {
+  async reopenAssessment(id) {
     const { assessments } = get()
-    const a = assessments.find((x) => x.id === id)
-    if (!a || a.status !== 'failed') return
-    try {
-      await submitToSheets(a.id, a.data as FormValues)
-      await get().upsert({ ...a, status: 'synced', syncedAt: Date.now(), updatedAt: Date.now() })
-    } catch {
-      await get().upsert({ ...a, status: 'failed', updatedAt: Date.now() })
-    }
-  },
-
-  async flushQueue() {
-    const queued = get().assessments.filter((a) => a.status === 'queued')
-    for (const a of queued) {
-      try {
-        await submitToSheets(a.id, a.data as FormValues)
-        await get().upsert({ ...a, status: 'synced', syncedAt: Date.now(), updatedAt: Date.now() })
-      } catch {
-        await get().upsert({ ...a, status: 'failed', updatedAt: Date.now() })
-      }
-    }
+    const existing = assessments.find((a) => a.id === id)
+    if (!existing || existing.status !== 'complete') return
+    // Marking complete must never be a one-way door.
+    await get().upsert({
+      id: existing.id,
+      data: existing.data,
+      status: 'draft',
+      createdAt: existing.createdAt,
+      updatedAt: Date.now(),
+      ...(existing.title !== undefined ? { title: existing.title } : {}),
+    })
   },
 
   async deleteAssessment(id) {
@@ -175,9 +144,9 @@ export const useAssessmentsStore = create<Store>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       title: duplicateTitle(source),
-      // syncedAt is deliberately NOT carried over. A spread would bring it,
-      // and the copy -- which has never been sent -- would then look like it
-      // had been, breaking the "edited since sent" derivation.
+      // completedAt is deliberately NOT carried over. A spread would bring it,
+      // and the copy -- which nobody has finished -- would look finished,
+      // breaking the "changed since you marked it complete" derivation.
     }
     await get().upsert(copy)
     return copy.id

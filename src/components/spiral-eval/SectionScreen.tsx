@@ -81,7 +81,7 @@ export function SectionScreen({ assessmentId, control, section, values, onLeave 
             href={`${base}/review`}
             className="flex items-center justify-center w-full min-h-[56px] rounded-xl bg-brand text-white text-lg font-semibold hover:bg-brand-hover"
           >
-            Review &amp; send
+            Review &amp; finish
           </Link>
         )}
         <Link

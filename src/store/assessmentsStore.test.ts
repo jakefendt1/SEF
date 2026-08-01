@@ -12,11 +12,6 @@ vi.mock('../lib/firestoreAssessments', () => ({
   updateAssessmentFields: (...args: unknown[]) => updateAssessmentFields(...args),
 }))
 
-const submitToSheets = vi.fn()
-vi.mock('../lib/api', () => ({
-  submitToSheets: (...args: unknown[]) => submitToSheets(...args),
-}))
-
 const { useAssessmentsStore } = await import('./assessmentsStore')
 
 function seed(state: { uid: string; loaded: boolean; assessments: unknown[] }) {
@@ -27,7 +22,6 @@ beforeEach(() => {
   putAssessment.mockClear()
   deleteAssessmentDoc.mockClear()
   updateAssessmentFields.mockClear()
-  submitToSheets.mockReset()
   useAssessmentsStore.setState({ uid: 'u1', assessments: [], loaded: true } as never)
 })
 
@@ -36,17 +30,17 @@ afterEach(() => {
 })
 
 describe('saveDraft', () => {
-  it('preserves status on a synced record (does not revert Saved -> Draft)', async () => {
+  it('preserves status on a completed record (does not revert it to a draft)', async () => {
     seed({
       uid: 'u1',
       loaded: true,
       assessments: [{
         id: 'a1',
         data: { name: 'Jane', companyName: 'Acme' },
-        status: 'synced',
+        status: 'complete',
         createdAt: 1,
         updatedAt: 2,
-        syncedAt: 2,
+        completedAt: 2,
       }],
     })
 
@@ -54,27 +48,8 @@ describe('saveDraft', () => {
 
     expect(putAssessment).toHaveBeenCalledTimes(1)
     const [, written] = putAssessment.mock.calls[0]
-    expect(written.status).toBe('synced')
-    expect(written.syncedAt).toBe(2)
-  })
-
-  it('does not reset a failed record back to draft', async () => {
-    seed({
-      uid: 'u1',
-      loaded: true,
-      assessments: [{
-        id: 'a1',
-        data: { name: 'Jane' },
-        status: 'failed',
-        createdAt: 1,
-        updatedAt: 2,
-      }],
-    })
-
-    await useAssessmentsStore.getState().saveDraft('a1', { name: 'Jane updated' })
-
-    const [, written] = putAssessment.mock.calls[0]
-    expect(written.status).toBe('failed')
+    expect(written.status).toBe('complete')
+    expect(written.completedAt).toBe(2)
   })
 
   it('defaults a genuinely new record to draft', async () => {
@@ -91,10 +66,10 @@ describe('saveDraft', () => {
       assessments: [{
         id: 'a1',
         data: { name: 'Jane', companyName: 'Acme', email: 'jane@acme.com' },
-        status: 'synced',
+        status: 'complete',
         createdAt: 1,
         updatedAt: 2,
-        syncedAt: 2,
+        completedAt: 2,
       }],
     })
 
@@ -143,10 +118,10 @@ describe('renameAssessment', () => {
       assessments: [{
         id: 'a1',
         data: { name: 'Jane' },
-        status: 'synced',
+        status: 'complete',
         createdAt: 1,
         updatedAt: 2,
-        syncedAt: 2,
+        completedAt: 2,
       }],
     })
 
@@ -164,10 +139,10 @@ describe('duplicateAssessment', () => {
   const SOURCE = {
     id: 'a1',
     data: { name: 'Jane', companyName: 'Acme Foods', heatSource: ['Oven'] },
-    status: 'synced' as const,
+    status: 'complete' as const,
     createdAt: 1,
     updatedAt: 2,
-    syncedAt: 2,
+    completedAt: 2,
   }
 
   it('creates an unsent draft with a new id and fresh timestamps', async () => {
@@ -185,11 +160,11 @@ describe('duplicateAssessment', () => {
 
   // A naive spread carries syncedAt, which would make a copy that was never
   // sent look sent -- and break the "changed since sending" derivation.
-  it('drops syncedAt so the copy is not mistaken for a sent record', async () => {
+  it('drops completedAt so the copy is not mistaken for a finished one', async () => {
     seed({ uid: 'u1', loaded: true, assessments: [SOURCE] })
     await useAssessmentsStore.getState().duplicateAssessment('a1')
     const [, written] = putAssessment.mock.calls[0]
-    expect(written.syncedAt).toBeUndefined()
+    expect(written.completedAt).toBeUndefined()
   })
 
   it('marks the copy in its title rather than mutating customer answers', async () => {
@@ -215,59 +190,85 @@ describe('duplicateAssessment', () => {
   })
 })
 
-describe('submitAssessment', () => {
-  it('returns ok:true and marks the record synced when online and the request succeeds', async () => {
-    vi.stubGlobal('navigator', { onLine: true })
-    submitToSheets.mockResolvedValueOnce(undefined)
+describe('markComplete', () => {
+  it('marks the record complete and stamps completedAt', async () => {
     seed({ uid: 'u1', loaded: true, assessments: [] })
 
-    const result = await useAssessmentsStore.getState().submitAssessment('a1', { name: 'Jane' } as never)
+    await useAssessmentsStore.getState().markComplete('a1', { name: 'Jane' } as never)
 
-    expect(result).toEqual({ ok: true })
     const [, written] = putAssessment.mock.calls.at(-1)!
-    expect(written.status).toBe('synced')
+    expect(written.status).toBe('complete')
+    expect(written.completedAt).toBeGreaterThan(0)
+    expect(written.completedAt).toBe(written.updatedAt)
   })
 
-  it('returns a distinguishable offline result and queues the record (does not claim success)', async () => {
+  // The old implementation branched on navigator.onLine because finishing also
+  // pushed a row to a Google Sheet. That is gone: this is a local Firestore
+  // write, which its offline cache accepts either way. Being offline must not
+  // change the outcome.
+  it('behaves identically offline -- there is no delivery left to fail', async () => {
     vi.stubGlobal('navigator', { onLine: false })
     seed({ uid: 'u1', loaded: true, assessments: [] })
 
-    const result = await useAssessmentsStore.getState().submitAssessment('a1', { name: 'Jane' } as never)
+    await useAssessmentsStore.getState().markComplete('a1', { name: 'Jane' } as never)
 
-    expect(result.ok).toBe(false)
-    expect(!result.ok && result.reason).toBe('offline')
-    expect(submitToSheets).not.toHaveBeenCalled()
     const [, written] = putAssessment.mock.calls.at(-1)!
-    expect(written.status).toBe('queued')
+    expect(written.status).toBe('complete')
   })
 
-  it('returns a distinguishable error result and marks the record failed when the network request throws', async () => {
-    vi.stubGlobal('navigator', { onLine: true })
-    submitToSheets.mockRejectedValueOnce(new Error('network down'))
-    seed({ uid: 'u1', loaded: true, assessments: [] })
+  it('keeps the original createdAt and the user-chosen title', async () => {
+    seed({
+      uid: 'u1',
+      loaded: true,
+      assessments: [{
+        id: 'a1',
+        data: { name: 'Jane' },
+        status: 'draft',
+        createdAt: 111,
+        updatedAt: 222,
+        title: 'Freezer line 3',
+      }],
+    })
 
-    const result = await useAssessmentsStore.getState().submitAssessment('a1', { name: 'Jane' } as never)
+    await useAssessmentsStore.getState().markComplete('a1', { name: 'Jane' } as never)
 
-    expect(result.ok).toBe(false)
-    expect(!result.ok && result.reason).toBe('error')
     const [, written] = putAssessment.mock.calls.at(-1)!
-    expect(written.status).toBe('failed')
+    expect(written.createdAt).toBe(111)
+    expect(written.title).toBe('Freezer line 3')
+  })
+})
+
+describe('reopenAssessment', () => {
+  // Marking complete must never be a one-way door.
+  it('puts a completed record back to draft without touching the answers', async () => {
+    seed({
+      uid: 'u1',
+      loaded: true,
+      assessments: [{
+        id: 'a1',
+        data: { name: 'Jane', companyName: 'Acme' },
+        status: 'complete',
+        createdAt: 1,
+        updatedAt: 2,
+        completedAt: 2,
+      }],
+    })
+
+    await useAssessmentsStore.getState().reopenAssessment('a1')
+
+    const [, written] = putAssessment.mock.calls.at(-1)!
+    expect(written.status).toBe('draft')
+    expect(written.data).toEqual({ name: 'Jane', companyName: 'Acme' })
+    expect(written.completedAt).toBeUndefined()
   })
 
-  it('offline and error are never confused with each other', async () => {
-    vi.stubGlobal('navigator', { onLine: true })
-    submitToSheets.mockRejectedValueOnce(new Error('boom'))
-    seed({ uid: 'u1', loaded: true, assessments: [] })
-    const errorResult = await useAssessmentsStore.getState().submitAssessment('a1', { name: 'Jane' } as never)
-
-    vi.stubGlobal('navigator', { onLine: false })
-    seed({ uid: 'u1', loaded: true, assessments: [] })
-    const offlineResult = await useAssessmentsStore.getState().submitAssessment('a2', { name: 'Jane' } as never)
-
-    expect(errorResult.ok).toBe(false)
-    expect(offlineResult.ok).toBe(false)
-    if (!errorResult.ok && !offlineResult.ok) {
-      expect(errorResult.reason).not.toBe(offlineResult.reason)
-    }
+  it('does nothing to a record that is already a draft', async () => {
+    seed({
+      uid: 'u1',
+      loaded: true,
+      assessments: [{ id: 'a1', data: {}, status: 'draft', createdAt: 1, updatedAt: 2 }],
+    })
+    await useAssessmentsStore.getState().reopenAssessment('a1')
+    expect(putAssessment).not.toHaveBeenCalled()
   })
 })

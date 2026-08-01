@@ -4,7 +4,7 @@ An offline-capable web app (installable PWA) holding the field tools an Intralox
 account manager uses on site:
 
 - **Spiral Eval** — an 85-field evaluation of a customer's spiral conveyor,
-  filled out on an iPad in a freezer, then sent to the office.
+  filled out on an iPad in a freezer and exportable as a PDF or spreadsheet.
 - **AIM Glide ROI Calculator** — total cost of ownership and ROI for AIM Glide
   against a traditional slat switch, exportable as a customer-facing PDF.
 
@@ -48,7 +48,6 @@ src/
     aim-glide/   The ROI calculator
     ui/          shadcn primitives (generated; avoid hand-editing)
   pdf/           React-PDF document for the evaluation export
-api/             Vercel serverless function that writes to Google Sheets
 public/          Static assets, including the in-app measurement diagrams
 docs/            Data model, original brief, full-resolution diagram sources
 ```
@@ -66,6 +65,8 @@ describing the same thing, drifting apart.
 
 | Concept | Lives in | Enforced by |
 | --- | --- | --- |
+| Form layout preference | `lib/formLayout.ts` | `formLayout.test.ts` |
+| Reading records written under the old status model | `lib/db.ts` → `normalizeAssessment` | `db.test.ts` |
 | Which fields are required, and when | `schema/formSchema.ts` → `REQUIRED_RULES` | Validation *and* the progress bar are both derived from it |
 | Which section a field belongs to | `schema/sectionMap.ts` | `sectionMap.test.ts` asserts every schema field appears in exactly one section |
 | What a field means, and whether it can be deferred | `schema/fieldMeta.ts` | — |
@@ -76,6 +77,18 @@ describing the same thing, drifting apart.
 | Brand colour | `--brand` in `index.css` | No `blue-900`/`#1e3a5f` literals in components |
 | Stacking order | `--z-app-header` / `--z-page-sticky` / `--z-overlay` | No ad-hoc `z-40` |
 
+**Finishing an evaluation is a local write, not a delivery.** Marking one
+complete only flips its status; there is no server to reach and therefore no
+failure state. It used to also append a row to a Google Sheet nobody read,
+which is where the old `queued` / `synced` / `failed` states came from. Records
+written under that model are translated on read by `normalizeAssessment` in
+`lib/db.ts` and are never rewritten -- reading a record must not cause a write.
+
+**The form has two layouts and they share one form instance.** Section-by-
+section (default) and everything-on-one-page, chosen per device via
+`lib/formLayout.ts`. Both render from the same `useForm` in
+`SpiralEvalFormShell`, so switching mid-evaluation loses nothing.
+
 **Data safety.** `lib/autosaveGuard.ts` exists because an async Firestore
 subscription racing a form mount once silently overwrote completed
 evaluations. There are three independent guards (route gate, autosave guard,
@@ -84,7 +97,7 @@ store backstop) and they are tested separately on purpose — see
 keep all three.
 
 Writes to an evaluation are whole-document (`setDoc`). Anything not restated in
-`saveDraft` is erased — this is why `status`, `syncedAt` and `title` are
+`saveDraft` is erased — this is why `status`, `completedAt` and `title` are
 explicitly carried through. Metadata-only changes go through
 `updateAssessmentFields` instead.
 
@@ -124,6 +137,8 @@ every deploy. Retiring the old one later is a one-click removal in
 **Settings → Domains** (and a matching removal from Firebase's authorized
 domains).
 
+There are no serverless functions -- the app is entirely static plus Firebase.
+
 Firestore rules deploy separately and are **not** part of the Vercel build:
 
 ```bash
@@ -133,8 +148,9 @@ npx firebase-tools deploy --only firestore:rules
 When adding a domain, add it to **Firebase Console → Authentication → Settings
 → Authorized domains** as well, or sign-in silently fails on the new host.
 
-`vercel.json` rewrites everything except `/api/*` to `index.html`. Without that
-rewrite every deep link 404s — which is what happened before it was added.
+`vercel.json` rewrites everything to `index.html` (Vercel checks the filesystem
+first, so real assets still win). Without that rewrite every deep link 404s —
+which is what happened before it was added.
 
 ---
 

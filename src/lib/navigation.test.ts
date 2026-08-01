@@ -59,7 +59,7 @@ describe('resolveNav', () => {
   })
 
   it('titles the review screen', () => {
-    expect(resolveNav('/spiral-eval/abc-123/review').title).toBe('Review & send')
+    expect(resolveNav('/spiral-eval/abc-123/review').title).toBe('Review & finish')
   })
 
   it('falls back gracefully on an unknown section slug', () => {

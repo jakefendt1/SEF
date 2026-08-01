@@ -9,7 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { StoredAssessment } from './db'
+import { normalizeAssessment, type StoredAssessment } from './db'
 
 function assessmentsCol(uid: string) {
   return collection(db, 'users', uid, 'assessments')
@@ -25,7 +25,9 @@ export function subscribeAssessments(
 ): () => void {
   const q = query(assessmentsCol(uid), orderBy('updatedAt', 'desc'))
   return onSnapshot(q, (snap) => {
-    onChange(snap.docs.map((d) => d.data() as StoredAssessment))
+    // Normalised here, at the boundary, so nothing downstream needs to know
+    // about the retired queued/synced/failed states.
+    onChange(snap.docs.map((d) => normalizeAssessment(d.data() as never)))
   })
 }
 

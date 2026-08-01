@@ -78,7 +78,12 @@ export function resolveNav(path: string): NavContext {
     // so back goes to the checklist -- not all the way out to the list.
     if (section) {
       return {
-        title: section === 'review' ? 'Review & send' : (getSectionBySlug(section)?.title ?? 'Evaluation'),
+        title:
+          section === 'review'
+            ? 'Review & finish'
+            : section === 'all'
+              ? 'Full form'
+              : (getSectionBySlug(section)?.title ?? 'Evaluation'),
         backHref: `${ROUTES.spiralEvalList}/${id}`,
         backLabel: 'Checklist',
       }

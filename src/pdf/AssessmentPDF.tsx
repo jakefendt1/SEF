@@ -69,8 +69,8 @@ export function AssessmentPDF({ assessment }: { assessment: StoredAssessment }) 
   const date = new Date(assessment.createdAt).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
-  const syncDate = assessment.syncedAt
-    ? new Date(assessment.syncedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  const completedDate = assessment.completedAt
+    ? new Date(assessment.completedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : null
 
   return (
@@ -82,7 +82,7 @@ export function AssessmentPDF({ assessment }: { assessment: StoredAssessment }) 
           <Text style={styles.subtitle}>Intralox Field Assessment</Text>
           <Text style={styles.meta}>
             {date} · Assessment ID: {assessment.id}
-            {syncDate ? ` · Synced: ${syncDate}` : ''}
+            {completedDate ? ` · Completed: ${completedDate}` : ''}
           </Text>
         </View>
 

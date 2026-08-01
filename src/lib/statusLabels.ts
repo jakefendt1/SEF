@@ -1,5 +1,5 @@
 // Plain-language status wording, in one place. The internal status values are
-// engineering terms ("synced", "queued"); these are what a field rep reads.
+// engineering terms; these are what a field rep reads.
 import type { AssessmentStatus } from './db'
 
 export interface StatusPresentation {
@@ -11,24 +11,14 @@ export interface StatusPresentation {
 
 export const STATUS_PRESENTATION: Record<AssessmentStatus, StatusPresentation> = {
   draft: {
-    label: 'Not sent yet',
-    help: 'Saved on your account. It has not been sent to the office.',
+    label: 'In progress',
+    help: "Saved to your account. You can pick it up on any device you're signed in on.",
     className: 'bg-gray-100 text-gray-700',
   },
-  queued: {
-    label: 'Waiting to send',
-    help: "Saved. It will send by itself once you're back online.",
-    className: 'bg-amber-100 text-amber-800',
-  },
-  synced: {
-    label: 'Sent',
-    help: 'Sent to the office. Nothing else to do.',
+  complete: {
+    label: 'Complete',
+    help: "You've marked this one finished. You can still open it and make changes.",
     className: 'bg-green-100 text-green-800',
-  },
-  failed: {
-    label: "Didn't send",
-    help: "Your answers are safe, but sending failed. Tap Try again.",
-    className: 'bg-red-100 text-red-800',
   },
 }
 
@@ -37,13 +27,13 @@ export function statusLabel(status: AssessmentStatus): string {
 }
 
 /**
- * True when a record was sent and then edited afterwards, so the office does
- * not have the latest answers. Derived rather than stored so it can't drift.
+ * True when a record was marked complete and then edited afterwards. Derived
+ * rather than stored so it can't drift.
  */
-export function isEditedSinceSent(a: {
+export function isEditedSinceComplete(a: {
   status: AssessmentStatus
   updatedAt: number
-  syncedAt?: number
+  completedAt?: number
 }): boolean {
-  return a.status === 'synced' && a.updatedAt > (a.syncedAt ?? 0)
+  return a.status === 'complete' && a.updatedAt > (a.completedAt ?? 0)
 }

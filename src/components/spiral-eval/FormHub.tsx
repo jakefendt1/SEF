@@ -7,6 +7,7 @@ import { getSectionProgress, type Completeness } from '../../lib/completeness'
 import { assessmentTitle } from '../../lib/assessmentTitle'
 import type { StoredAssessment } from '../../lib/db'
 import { cn } from '../../lib/utils'
+import { LayoutToggle } from './LayoutToggle'
 
 interface Props {
   assessmentId: string
@@ -94,6 +95,10 @@ export function FormHub({ assessmentId, control, values, completeness, existing 
         </div>
       </fieldset>
 
+      <div className="mt-5">
+        <LayoutToggle current="sections" assessmentId={assessmentId} />
+      </div>
+
       <h3 className="text-lg font-semibold text-gray-900 mt-7 mb-2">Sections</h3>
       <ul className="space-y-2">
         {FORM_SECTIONS.map((section) => {
@@ -154,7 +159,7 @@ export function FormHub({ assessmentId, control, values, completeness, existing 
           href={`${base}/review`}
           className="flex items-center justify-center w-full min-h-[52px] rounded-xl border border-gray-400 text-gray-800 text-base font-semibold hover:bg-gray-50"
         >
-          Review &amp; send
+          Review &amp; finish
         </Link>
       </div>
     </div>
