@@ -18,7 +18,7 @@ Concretely, and non-negotiably:
   "Draft". Wording lives in `lib/statusLabels.ts`, not inline.
 - Never a hover-only affordance — there is no hover on a tablet.
 - Never `confirm()` / `alert()`. On iOS these render as
-  "sef-bice.vercel.app says:" system sheets, which read as scam popups to this
+  "intralox-am-hub.vercel.app says:" system sheets, which read as scam popups to this
   audience. Use `ui/alert-dialog` or a `sonner` toast.
 
 ## Rules that exist because something broke

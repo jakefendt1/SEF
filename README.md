@@ -113,8 +113,16 @@ tests encode it.
 
 ## Deploying
 
-Pushing to `main` triggers a Vercel production deploy (project `sef`, currently
-served at `sef-bice.vercel.app`).
+Pushing to `main` triggers a Vercel production deploy (project
+`intralox-am-hub`).
+
+The app is served at **`intralox-am-hub.vercel.app`** — the URL to share.
+`sef-bice.vercel.app` is the original address and still resolves to the same
+deployment; it is kept alive so existing bookmarks and already-installed PWAs
+keep working. Both are project domains assigned to Production, so both track
+every deploy. Retiring the old one later is a one-click removal in
+**Settings → Domains** (and a matching removal from Firebase's authorized
+domains).
 
 Firestore rules deploy separately and are **not** part of the Vercel build:
 
