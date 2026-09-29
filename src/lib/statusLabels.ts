@@ -27,6 +27,19 @@ export function statusLabel(status: AssessmentStatus): string {
 }
 
 /**
+ * What the user is told after an AIM Glide PDF export.
+ *
+ * The export used to report success unconditionally while quietly dropping the
+ * Intralox logo, so a rep could hand a customer an unbranded document believing
+ * it was fine. If the logo fails again, say so.
+ */
+export const PDF_EXPORT_MESSAGES = {
+  ok: 'PDF saved to your downloads',
+  missingLogo: "PDF saved, but the Intralox logo didn't render. Check it before you send it.",
+  failed: "Couldn't create the PDF. Nothing was saved.",
+} as const
+
+/**
  * True when a record was marked complete and then edited afterwards. Derived
  * rather than stored so it can't drift.
  */

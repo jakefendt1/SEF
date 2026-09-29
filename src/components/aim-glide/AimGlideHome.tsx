@@ -27,6 +27,8 @@ import { ResultsTab } from './ResultsTab';
 import { SavedCalculationsTab } from './SavedCalculationsTab';
 import { useCalculator } from '@/hooks/useCalculator';
 import { generatePDF } from '@/lib/pdf-export';
+import { hasEnoughInput } from '@/lib/calculator';
+import { PDF_EXPORT_MESSAGES } from '@/lib/statusLabels';
 import { toast } from 'sonner';
 import {
   Calculator,
@@ -48,12 +50,22 @@ export function AimGlideHome() {
   const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
   const [overwriteInfo, setOverwriteInfo] = useState<{ name: string; index: number } | null>(null);
 
+  // Export is only meaningful once something has been entered -- otherwise it
+  // produces a fully-branded analysis of nothing, which a rep could hand over.
+  const canExport = hasEnoughInput(calc.tco);
+
   const handleExportPDF = useCallback(() => {
     try {
-      generatePDF(calc.inputs, calc.tco, calc.benefitYears);
-      toast.success('PDF exported successfully');
+      const result = generatePDF(calc.inputs, calc.tco, calc.benefitYears);
+      // Report what actually happened. This used to claim success even when the
+      // logo silently failed to draw, so unbranded PDFs went out for years.
+      if (result.logoRendered) {
+        toast.success(PDF_EXPORT_MESSAGES.ok);
+      } else {
+        toast.warning(PDF_EXPORT_MESSAGES.missingLogo);
+      }
     } catch (err) {
-      toast.error('Failed to export PDF');
+      toast.error(PDF_EXPORT_MESSAGES.failed);
       console.error(err);
     }
   }, [calc.inputs, calc.tco, calc.benefitYears]);
@@ -126,7 +138,13 @@ export function AimGlideHome() {
               )}
 
               <div className="hidden sm:flex items-center gap-2">
-                <Button variant="outline" onClick={handleExportPDF} className="min-h-[44px]">
+                <Button
+                  variant="outline"
+                  onClick={handleExportPDF}
+                  disabled={!canExport}
+                  title={canExport ? undefined : 'Enter some numbers first'}
+                  className="min-h-[44px]"
+                >
                   <FileDown className="size-4" />
                   Export PDF
                 </Button>
@@ -148,7 +166,7 @@ export function AimGlideHome() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-60">
-                  <DropdownMenuItem onClick={handleExportPDF} className="sm:hidden">
+                  <DropdownMenuItem onClick={handleExportPDF} disabled={!canExport} className="sm:hidden">
                     <FileDown className="size-4" />
                     Export PDF
                   </DropdownMenuItem>
@@ -208,9 +226,9 @@ export function AimGlideHome() {
             <TabsContent value="results" className="mt-0">
               <ResultsTab
                 tco={calc.tco}
-                inputs={calc.inputs}
                 benefitYears={calc.benefitYears}
                 onBenefitYearsChange={calc.setBenefitYears}
+                onGoToCalculator={() => setActiveTab('calculator')}
               />
             </TabsContent>
 

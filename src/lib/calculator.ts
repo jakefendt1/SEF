@@ -105,11 +105,20 @@ export const TIME_UNITS = [
 export const TIME_UNITS_NO_HOUR = TIME_UNITS.filter(u => u.value !== 'per hour');
 
 export const PRODUCT_UNITS = [
-  { value: 'loaves', label: 'loaves' },
-  { value: 'lbs', label: 'lbs' },
-  { value: 'units', label: 'units' },
-  { value: 'pieces', label: 'pieces' },
+  { value: 'loaves', label: 'loaves', singular: 'loaf' },
+  { value: 'lbs', label: 'lbs', singular: 'lb' },
+  { value: 'units', label: 'units', singular: 'unit' },
+  { value: 'pieces', label: 'pieces', singular: 'piece' },
 ];
+
+/**
+ * "loaves" -> "loaf", for per-unit labels like "Value per loaf".
+ * Trimming a trailing "s" produced "loave"; the unit list is fixed and short, so
+ * the singular is simply stated rather than derived.
+ */
+export function singularProduct(unit: string): string {
+  return PRODUCT_UNITS.find(u => u.value === unit)?.singular ?? unit;
+}
 
 export const BENEFIT_YEARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -269,4 +278,91 @@ export function calculateTCO(inputs: CalculatorInputs, benefitYears: number): TC
 
 export function formatCurrency(value: number): string {
   return '$' + value.toLocaleString();
+}
+
+/**
+ * Currency with the sign in front of the symbol, for the cash-flow chart.
+ * `formatCurrency` would render a recovery position as "$-89,850".
+ */
+export function formatSignedCurrency(value: number): string {
+  return (value < 0 ? '-$' : '$') + Math.abs(value).toLocaleString();
+}
+
+/**
+ * Has the user entered enough for the results to mean anything?
+ *
+ * `0` is a real answer everywhere else in this calculator, so this deliberately
+ * does not ask "is any figure zero". It asks whether *nothing at all* has been
+ * entered -- in which case the Results tab would otherwise render
+ * "$0 saved / 0.00 yrs / 0% ROI" as though that were a finding, and Export PDF
+ * would hand the account manager an empty analysis to leave with a customer.
+ */
+export function hasEnoughInput(tco: TCOResult): boolean {
+  return tco.metal.total > 0 || tco.aim.total > 0 || tco.investment > 0;
+}
+
+/**
+ * Payback, in words.
+ *
+ * `savings.paybackYears` is a raw string like "2.34", which is both false
+ * precision for an estimate and unreadable at arm's length on a plant floor.
+ * Worse, `calculateTCO` stores `0` when there are no yearly savings, so the raw
+ * field renders as "0.00" -- an *instant* payback -- when it actually means the
+ * investment never pays back at all. Every surface formats through here so the
+ * screen and the PDF cannot disagree about that.
+ */
+export function formatPayback(tco: TCOResult): string {
+  if (tco.investment <= 0) return 'None needed';
+  if (tco.savings.yearly <= 0) return 'No payback';
+
+  const months = tco.savings.paybackMonths;
+  if (months < 1) return 'Under a month';
+  if (months < 12) return months === 1 ? '1 month' : `${months} months`;
+
+  const years = Math.floor(months / 12);
+  const remainder = months % 12;
+  const yearPart = `${years} yr${years === 1 ? '' : 's'}`;
+  return remainder === 0 ? yearPart : `${yearPart} ${remainder} mo`;
+}
+
+export interface CashflowPoint {
+  year: number;
+  /** Cumulative position: negative while the investment is still being recovered. */
+  cumulative: number;
+}
+
+export interface CashflowSeries {
+  points: CashflowPoint[];
+  /** Where the line crosses zero, or `null` when it never does. */
+  paybackYear: number | null;
+  min: number;
+  max: number;
+}
+
+/**
+ * Cumulative cash position year by year, starting at -investment.
+ *
+ * This is the shape behind the payback chart on both the Results tab and the
+ * PDF. It lives here rather than in either renderer so the two cannot drift --
+ * the same bug that let the screen say "Spare Parts" while the PDF said
+ * "Maintenance Parts" for the same row.
+ */
+export function buildCashflowSeries(tco: TCOResult, benefitYears: number): CashflowSeries {
+  const points: CashflowPoint[] = [];
+  for (let year = 0; year <= benefitYears; year++) {
+    points.push({ year, cumulative: Math.round(tco.savings.yearly * year - tco.investment) });
+  }
+
+  // No savings means the line never climbs, so it never crosses zero. Guard
+  // this rather than trusting savings.paybackYears, which is 0 in that case.
+  const paybackYear =
+    tco.savings.yearly > 0 ? tco.investment / tco.savings.yearly : tco.investment <= 0 ? 0 : null;
+
+  const values = points.map(p => p.cumulative);
+  return {
+    points,
+    paybackYear,
+    min: Math.min(...values, 0),
+    max: Math.max(...values, 0),
+  };
 }
