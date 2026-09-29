@@ -19,7 +19,8 @@ export default defineConfig({
       manifest: {
         name: 'Intralox Account Manager Hub',
         short_name: 'AM Hub',
-        description: 'Intralox account manager tools: Spiral Eval field assessments and AIM Glide ROI calculator',
+        description:
+          'Intralox account manager tools: Spiral Eval field assessments, the AIM Glide ROI calculator, and the belt elongation check',
         theme_color: '#1e3a5f',
         background_color: '#ffffff',
         display: 'standalone',

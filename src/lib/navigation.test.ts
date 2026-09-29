@@ -30,6 +30,14 @@ describe('resolveNav', () => {
     expect(resolveNav('/aim-glide').backHref).toBe('/')
   })
 
+  it('sends the belt elongation check back to the dashboard', () => {
+    expect(resolveNav('/belt-elongation')).toEqual({
+      title: 'Belt Elongation Check',
+      backHref: '/',
+      backLabel: 'Tools',
+    })
+  })
+
   it('still offers a way home from an unknown route', () => {
     expect(resolveNav('/nope/nothing-here').backHref).toBe('/')
   })

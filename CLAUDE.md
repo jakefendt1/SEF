@@ -61,6 +61,38 @@ painted a wall of red on questions they had merely scrolled past.
 an empty box, which made "zero downtime" and "not answered" identical to the
 eye while the maths treated them differently.
 
+## Belt Elongation Check
+
+**It saves nothing, and it says so.** The other two tools write to Firestore;
+this one is a calculator. There is no record, no delivery, and therefore no
+failure state to get wrong. The page tells the user that in as many words
+rather than letting them assume a reading was kept. If you ever add saving,
+add it as a real write with a real failure path -- do not let a "Save" button
+appear that only lives in local state.
+
+**The 3% replacement limit is not an Intralox figure.** The 2026 MPB manual
+publishes the 0.5–1% break-in growth (p. 494) but no replacement limit. 3% is a
+user-editable default, labelled as needing confirmation from Modular TSG. Do
+not promote it to a specification, a constant named `INTRALOX_LIMIT`, or a
+sentence that implies the manual says it.
+
+**Readings are typed as whole units plus a fraction from a list.** A single
+text box would be less code and wrong: `inputMode="decimal"` gives an iPad the
+numeric keypad, which has no "/" on it, so a rep reading "25 and eleven
+sixteenths" off a blade would have to convert to 25.6875 in their head on a
+plant floor. `parseMeasurement` still accepts typed fractions and feet-inches
+for anyone on a laptop.
+
+**Short spans are the failure mode, not the arithmetic.** Over three pitches of
+a half-inch belt, one sixteenth of tape error *is* four percent of elongation.
+Hence `recommendedPitchCount`, the ± figure next to the result, and the warning
+under the pitch count. Don't remove them to tidy the layout.
+
+**The drawn diagram is to scale for the example it labels.** `MeasureDiagram`
+is 12 pitches of Series 900 at a fixed px-per-inch, and the caption states the
+reading that geometry implies. If you change the example pitch or count, change
+the caption with it, or the picture starts teaching a belt that doesn't exist.
+
 ## Open questions — do not encode as fact
 
 - **Quick-mode scope.** `schema/conditionals.ts` notes that Quick mode covering

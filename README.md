@@ -7,8 +7,11 @@ account manager uses on site:
   filled out on an iPad in a freezer and exportable as a PDF or spreadsheet.
 - **AIM Glide ROI Calculator** — total cost of ownership and ROI for AIM Glide
   against a traditional slat switch, exportable as a customer-facing PDF.
+- **Belt Elongation Check** — works out how far a belt has stretched from a
+  pitch count and a tape measure, for the visit where nobody has the Intralox
+  elongation ruler. A calculator, not a record: it saves nothing.
 
-Both tools sit behind one login, so a user's work follows them between devices.
+The tools sit behind one login, so a user's work follows them between devices.
 
 ---
 
@@ -46,6 +49,8 @@ src/
     shell/       App chrome: header, back navigation, dashboard
     spiral-eval/ The evaluation tool
     aim-glide/   The ROI calculator
+    belt-elongation/ The elongation check, including the drawn how-to-measure
+                 diagram and tape-measure reference
     ui/          shadcn primitives (generated; avoid hand-editing)
   pdf/           React-PDF document for the evaluation export
 public/          Static assets, including the in-app measurement diagrams
@@ -74,6 +79,8 @@ describing the same thing, drifting apart.
 | How a record is named in the UI | `lib/assessmentTitle.ts` | `assessmentTitle.test.ts` |
 | Status wording shown to users | `lib/statusLabels.ts` | — |
 | Who may sign up | `lib/allowedEmails.ts` **and** `firestore.rules` | Must be changed together — see the comment in both |
+| Nominal pitch per belt series | `schema/beltSeries.ts` | `beltElongation.test.ts` asserts no duplicate series and a usable pitch for each |
+| Elongation thresholds *and the wording that goes with them* | `lib/beltElongation.ts` → `verdictFor` | `beltElongation.test.ts`; the gauge, the pill and the big number all style from `belt-elongation/levelStyles.ts` |
 | Brand colour | `--brand` in `index.css` | No `blue-900`/`#1e3a5f` literals in components |
 | Stacking order | `--z-app-header` / `--z-page-sticky` / `--z-overlay` | No ad-hoc `z-40` |
 
@@ -116,6 +123,8 @@ progress; anything they genuinely cannot measure gets marked
 
 - `users/{uid}/assessments/{id}` — see `StoredAssessment` in `lib/db.ts`
 - `users/{uid}/roiCalculations/{id}` — see `StoredRoiCalculation`
+
+The Belt Elongation Check has no collection: it computes and discards.
 
 Ownership is per-uid and enforced in `firestore.rules`; no user can read
 another's records. [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) has the

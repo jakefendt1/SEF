@@ -3,7 +3,7 @@
 // read from here so a route can't be renamed in one place and go stale in
 // another.
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardList, Calculator } from 'lucide-react'
+import { ClipboardList, Calculator, Ruler } from 'lucide-react'
 import { getSectionBySlug } from '../schema/sectionMap'
 
 export const ROUTES = {
@@ -12,6 +12,7 @@ export const ROUTES = {
   /** Hub at :id, one screen per section, plus a "review" screen. */
   spiralEvalForm: '/spiral-eval/:id/:section?',
   aimGlide: '/aim-glide',
+  beltElongation: '/belt-elongation',
 } as const
 
 export interface ToolDef {
@@ -41,6 +42,15 @@ export const TOOLS: ToolDef[] = [
     description: 'Compare cost of ownership and ROI for AIM Glide vs. a traditional slat switch.',
     href: ROUTES.aimGlide,
     icon: Calculator,
+  },
+  {
+    id: 'belt-elongation',
+    title: 'Belt Elongation Check',
+    shortTitle: 'Elongation',
+    description:
+      "Measure belt stretch with a tape measure when you haven't got the elongation ruler.",
+    href: ROUTES.beltElongation,
+    icon: Ruler,
   },
 ]
 
@@ -99,6 +109,14 @@ export function resolveNav(path: string): NavContext {
   if (p === ROUTES.aimGlide) {
     return {
       title: 'AIM Glide ROI Calculator',
+      backHref: ROUTES.dashboard,
+      backLabel: DASHBOARD_LABEL,
+    }
+  }
+
+  if (p === ROUTES.beltElongation) {
+    return {
+      title: 'Belt Elongation Check',
       backHref: ROUTES.dashboard,
       backLabel: DASHBOARD_LABEL,
     }

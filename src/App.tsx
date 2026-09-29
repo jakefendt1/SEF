@@ -7,6 +7,7 @@ import { Dashboard } from './components/shell/Dashboard'
 import { SpiralEvalListRoute } from './components/spiral-eval/SpiralEvalListRoute'
 import { SpiralEvalFormRoute } from './components/spiral-eval/SpiralEvalFormRoute'
 import { AimGlideHome } from './components/aim-glide/AimGlideHome'
+import { BeltElongationHome } from './components/belt-elongation/BeltElongationHome'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ROUTES } from './lib/navigation'
 
@@ -41,6 +42,7 @@ export default function App() {
               <Route path={ROUTES.spiralEvalList} component={SpiralEvalListRoute} />
               <Route path={ROUTES.spiralEvalForm} component={SpiralEvalFormRoute} />
               <Route path={ROUTES.aimGlide} component={AimGlideHome} />
+              <Route path={ROUTES.beltElongation} component={BeltElongationHome} />
               <Route component={NotFound} />
             </Switch>
           </AppShell>
