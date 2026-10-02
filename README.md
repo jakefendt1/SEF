@@ -10,6 +10,10 @@ account manager uses on site:
 - **Belt Elongation Check** — works out how far a belt has stretched from a
   pitch count and a tape measure, for the visit where nobody has the Intralox
   elongation ruler. A calculator, not a record: it saves nothing.
+- **ThermoDrive Bulk Density Calculator** — how much a flighted ThermoDrive
+  incline carries per flight, the belt speed a line needs, and what sidewalls
+  or guards add, with a 3D view of the pocket. Replaces CalcLab's Bulk Density
+  Calculator. Runs can be saved and exported as a customer or internal PDF.
 
 The tools sit behind one login, so a user's work follows them between devices.
 
@@ -44,6 +48,8 @@ web config is not a secret, access is controlled by `firestore.rules`.
 src/
   schema/        Form contract: field definitions, required rules, sections
   lib/           Pure logic + Firebase adapters (no JSX)
+    tdBulkDensity/ The bulk density engine (pure TS, runs in a Web Worker),
+                 manual data tables, rules, and reference/pile.py
   store/         zustand stores; the only things that talk to Firestore
   components/
     shell/       App chrome: header, back navigation, dashboard
@@ -51,6 +57,7 @@ src/
     aim-glide/   The ROI calculator
     belt-elongation/ The elongation check, including the drawn how-to-measure
                  diagram and tape-measure reference
+    td-bulk-density/ The bulk density calculator's screens, views and charts
     ui/          shadcn primitives (generated; avoid hand-editing)
   pdf/           React-PDF document for the evaluation export
 public/          Static assets, including the in-app measurement diagrams
@@ -81,6 +88,8 @@ describing the same thing, drifting apart.
 | Who may sign up | `lib/allowedEmails.ts` **and** `firestore.rules` | Must be changed together — see the comment in both |
 | Nominal pitch per belt series | `schema/beltSeries.ts` | `beltElongation.test.ts` asserts no duplicate series and a usable pitch for each |
 | Elongation thresholds *and the wording that goes with them* | `lib/beltElongation.ts` → `verdictFor` | `beltElongation.test.ts`; the gauge, the pill and the big number all style from `belt-elongation/levelStyles.ts` |
+| Bulk density manual tables (flights, sidewalls, indents) | `lib/tdBulkDensity/data/` | `engine.test.ts`; the dropdowns and the rule checks both read `rules.ts` → `availableOptions` |
+| Bulk density illustration colours | `components/td-bulk-density/palette.ts` | Every view, the legend and the charts read it |
 | Brand colour | `--brand` in `index.css` | No `blue-900`/`#1e3a5f` literals in components |
 | Stacking order | `--z-app-header` / `--z-page-sticky` / `--z-overlay` | No ad-hoc `z-40` |
 
@@ -123,6 +132,9 @@ progress; anything they genuinely cannot measure gets marked
 
 - `users/{uid}/assessments/{id}` — see `StoredAssessment` in `lib/db.ts`
 - `users/{uid}/roiCalculations/{id}` — see `StoredRoiCalculation`
+- `users/{uid}/tdBulkDensityRuns/{id}` — see `StoredTdRun` in
+  `lib/tdBulkDensityRecord.ts`: all inputs (canonical units), the units they
+  were typed in, the engine version and a results snapshot
 
 The Belt Elongation Check has no collection: it computes and discards.
 

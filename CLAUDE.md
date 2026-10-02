@@ -93,6 +93,53 @@ is 12 pitches of Series 900 at a fixed px-per-inch, and the caption states the
 reading that geometry implies. If you change the example pitch or count, change
 the caption with it, or the picture starts teaching a belt that doesn't exist.
 
+## ThermoDrive Bulk Density Calculator
+
+Built from `../TD Bulk Density/Calculator Plan.txt` (the spec) and its
+`refs/`. The plan's §9 tests T1–T19 are the contract and live in
+`lib/tdBulkDensity/engine.test.ts`.
+
+**The 3D numbers come from a reference prototype, kept in the repo.**
+`lib/tdBulkDensity/reference/pile.py` is the plan's Appendix A verbatim. Re-run
+it (`python pile.py`, needs NumPy) after any change to `heap3d.ts` or
+`spill.ts`; the engine must still match it within 1%.
+
+**No polygon library for the 2D pocket.** The plan asked for
+`polygon-clipping`; it throws on the scoop profiles because the free surface
+always passes exactly through the flight tip, a polygon vertex. A pocket is one
+polygon cut by one half-plane, so `clipBelowSurface` does it exactly. Don't
+swap a general clipper back in without the scoop tests passing.
+
+**Results from the worker are structured clones.** Never compare a result's
+`inputs` to the live inputs by identity -- use `inputsKey` (key-sorted JSON).
+Identity comparison silently disabled the PDF button.
+
+**Nothing describing a customer's line is pre-filled.** Belt, product, speed
+and throughput start blank. Guard clearance has no default on purpose: it
+decides whether guards hold product, and a guess would decide it for the rep.
+Engineering defaults (75% fill, 5° dynamic derate, 1.0 in hold-down width,
+μ 0.3) are labelled as defaults, not manual figures.
+
+**Product presets are not Intralox data.** The UI and the PDF say "typical
+range — confirm with customer". Don't drop that wording.
+
+**Length rules allow 0.01 in.** The manual's millimetre figures are rounded
+(3.9 in = 99 mm = 3.898 in); without the tolerance a metric user typing the
+manual's own number is told they're under the minimum.
+
+**Saving reports what actually happened.** `lib/writeOutcome.ts`: "saved"
+only once the server confirms, "on this device, not sent yet" while a write is
+queued offline, "didn't save" on refusal. Reopening a run recomputes it and
+says if the answer changed; it never writes.
+
+**Open questions — do not encode as fact:**
+- The 2.5 in flighted-roller-limiter indent/notch rule (plan §4.3) isn't on the
+  manual pages in `refs/`; it's a warning with no page cite until confirmed.
+- Max flight length (36 / 32 in) is applied to the whole flight width even when
+  notches split it. Unconfirmed whether each notched piece counts separately.
+- Hold-down width default (1.0 in) and the customer PDF content are open items
+  owned by Jake (plan §12).
+
 ## Open questions — do not encode as fact
 
 - **Quick-mode scope.** `schema/conditionals.ts` notes that Quick mode covering

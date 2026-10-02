@@ -6,6 +6,7 @@ import { InstallPrompt } from '../InstallPrompt'
 import { useAuthStore } from '../../store/authStore'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 import { useRoiCalculationsStore } from '../../store/roiCalculationsStore'
+import { useTdBulkDensityStore } from '../../store/tdBulkDensityStore'
 import { migrateLegacyAssessmentsForUser } from '../../lib/migrateLegacyAssessments'
 import { importLegacyRoiCalculationsForUser } from '../../lib/importLegacyRoiCalculations'
 import { resolveNav } from '../../lib/navigation'
@@ -26,6 +27,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const subscribeRoi = useRoiCalculationsStore((s) => s.subscribe)
   const unsubscribeRoi = useRoiCalculationsStore((s) => s.unsubscribe)
   const roiLoaded = useRoiCalculationsStore((s) => s.loaded)
+  const subscribeTd = useTdBulkDensityStore((s) => s.subscribe)
+  const unsubscribeTd = useTdBulkDensityStore((s) => s.unsubscribe)
   const roiImportDone = useRef(false)
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [location] = useLocation()
@@ -49,6 +52,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     subscribeRoi(uid)
     return () => unsubscribeRoi()
   }, [user?.uid, subscribeRoi, unsubscribeRoi])
+
+  // Saved bulk density runs: subscribed here for the same reason.
+  useEffect(() => {
+    const uid = user?.uid
+    if (!uid) return
+    subscribeTd(uid)
+    return () => unsubscribeTd()
+  }, [user?.uid, subscribeTd, unsubscribeTd])
 
   // Import any pre-Firestore calculations left in localStorage. Deliberately
   // waits for `roiLoaded` -- the importer dedupes against what's already in

@@ -8,6 +8,7 @@ import { SpiralEvalListRoute } from './components/spiral-eval/SpiralEvalListRout
 import { SpiralEvalFormRoute } from './components/spiral-eval/SpiralEvalFormRoute'
 import { AimGlideHome } from './components/aim-glide/AimGlideHome'
 import { BeltElongationHome } from './components/belt-elongation/BeltElongationHome'
+import { TdBulkDensityHome } from './components/td-bulk-density/TdBulkDensityHome'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ROUTES } from './lib/navigation'
 
@@ -43,6 +44,8 @@ export default function App() {
               <Route path={ROUTES.spiralEvalForm} component={SpiralEvalFormRoute} />
               <Route path={ROUTES.aimGlide} component={AimGlideHome} />
               <Route path={ROUTES.beltElongation} component={BeltElongationHome} />
+              <Route path={ROUTES.tdBulkDensity} component={TdBulkDensityHome} />
+              <Route path={ROUTES.tdBulkDensityRun} component={TdBulkDensityHome} />
               <Route component={NotFound} />
             </Switch>
           </AppShell>

@@ -20,7 +20,7 @@ export default defineConfig({
         name: 'Intralox Account Manager Hub',
         short_name: 'AM Hub',
         description:
-          'Intralox account manager tools: Spiral Eval field assessments, the AIM Glide ROI calculator, and the belt elongation check',
+          'Intralox account manager tools: Spiral Eval field assessments, the AIM Glide ROI calculator, the belt elongation check, and the ThermoDrive bulk density calculator',
         theme_color: '#1e3a5f',
         background_color: '#ffffff',
         display: 'standalone',

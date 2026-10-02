@@ -1,0 +1,92 @@
+// Server renders of the page and its pieces. The rest of the suite is
+// node-only logic; this proves the screens still mount -- that no import,
+// hook order or null-handling mistake takes the tool down to a blank card.
+// It is not a substitute for opening it on an iPad (the 3D view needs WebGL
+// and is not rendered here).
+import { describe, expect, it } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { Router } from 'wouter'
+import { computeTdBulkDensity } from '@/lib/tdBulkDensity/compute'
+import { initialForm, type TdForm } from '@/lib/tdBulkDensity/form'
+import { makeInputs } from '@/lib/tdBulkDensity/defaults'
+import { ConveyorStep } from './ConveyorStep'
+import { EdgeStep } from './EdgeStep'
+import { EndSection } from './EndSection'
+import { FlightStep } from './FlightStep'
+import { ProductStep } from './ProductStep'
+import { ResultsCard } from './ResultsCard'
+import { ResultsStep } from './ResultsStep'
+import { SideSection } from './SideSection'
+import { TdBulkDensityHome } from './TdBulkDensityHome'
+
+const noop = () => {}
+
+describe('TdBulkDensityHome', () => {
+  const html = renderToStaticMarkup(
+    <Router ssrPath="/td-bulk-density">
+      <TdBulkDensityHome />
+    </Router>,
+  )
+
+  it('opens on the conveyor step with nothing invented', () => {
+    expect(html).toContain('ThermoDrive Bulk Density Calculator')
+    expect(html).toContain('1. Conveyor')
+    expect(html).toContain('Enter these to see results')
+    expect(html).toContain('Belt width')
+    expect(html).not.toContain('lb/h</p>')
+  })
+
+  it('says plainly that the run is not saved yet', () => {
+    expect(html).toContain('Not saved')
+  })
+})
+
+describe('steps and views', () => {
+  const form: TdForm = {
+    ...initialForm(),
+    beltWidth: '12',
+    incline: '52',
+    flightHeightText: '5',
+    flightSpacing: '8',
+    density: '7.9',
+    repose: '35',
+    smallestDim: '1',
+    speed: '60',
+    target: '2625',
+  }
+  const result = computeTdBulkDensity(makeInputs({ containment: 'open' }), 'coarse')
+
+  it('renders every step', () => {
+    for (const Step of [ConveyorStep, FlightStep, EdgeStep, ProductStep, ResultsStep]) {
+      expect(renderToStaticMarkup(<Step form={form} set={noop} result={result} />).length).toBeGreaterThan(100)
+    }
+    expect(renderToStaticMarkup(<EdgeStep form={form} set={noop} result={null} />)).toContain('Flight width = 9.5 in')
+    expect(renderToStaticMarkup(<EdgeStep form={{ ...form, containment: 'guards' }} set={noop} result={null} />)).toContain(
+      'there is no default',
+    )
+  })
+
+  it('renders the headline numbers, or says what is missing', () => {
+    const r = computeTdBulkDensity(makeInputs({ beltSpeedFpm: 60, targetLbPerHr: 1000 }), 'coarse')
+    const out = renderToStaticMarkup(<ResultsCard result={r} missing={[]} refining={false} system="imperial" />)
+    expect(out).toContain('Minimum belt speed')
+    expect(out).toContain('ft/min')
+    const none = renderToStaticMarkup(
+      <ResultsCard result={r} missing={['Belt speed']} refining={false} system="imperial" />,
+    )
+    expect(none).toContain('Belt speed')
+  })
+
+  it('draws the side and end sections from the field', () => {
+    const side = renderToStaticMarkup(
+      <SideSection result={result} inputs={result.inputs} cutX={0.4} cutZ={0.5} onCutX={noop} onCutZ={noop} system="imperial" />,
+    )
+    expect(side).toContain('<svg')
+    expect(side).toContain('polygon')
+    const end = renderToStaticMarkup(
+      <EndSection result={result} inputs={result.inputs} cutX={0.4} cutZ={0.5} onCutX={noop} onCutZ={noop} system="metric" />,
+    )
+    expect(end).toContain('flight (carry)')
+    expect(end).toContain('mm')
+  })
+})

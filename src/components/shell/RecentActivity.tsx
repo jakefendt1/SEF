@@ -1,7 +1,9 @@
 import { Link } from 'wouter'
-import { ClipboardList, Calculator, ChevronRight } from 'lucide-react'
+import { ClipboardList, Calculator, ChevronRight, Layers } from 'lucide-react'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
 import { useRoiCalculationsStore } from '../../store/roiCalculationsStore'
+import { useTdBulkDensityStore } from '../../store/tdBulkDensityStore'
+import { runTitle } from '../../lib/tdBulkDensityRecord'
 import { assessmentTitle } from '../../lib/assessmentTitle'
 import { statusLabel } from '../../lib/statusLabels'
 import { ROUTES } from '../../lib/navigation'
@@ -32,10 +34,12 @@ export function RecentActivity() {
   const assessmentsLoaded = useAssessmentsStore((s) => s.loaded)
   const calculations = useRoiCalculationsStore((s) => s.calculations)
   const roiLoaded = useRoiCalculationsStore((s) => s.loaded)
+  const runs = useTdBulkDensityStore((s) => s.runs)
+  const runsLoaded = useTdBulkDensityStore((s) => s.loaded)
 
-  // Don't claim "nothing here yet" before both subscriptions have answered --
+  // Don't claim "nothing here yet" before every subscription has answered --
   // that reads as data loss to a user who knows they saved something.
-  if (!assessmentsLoaded || !roiLoaded) return null
+  if (!assessmentsLoaded || !roiLoaded || !runsLoaded) return null
 
   const items: RecentItem[] = [
     ...assessments.map((a) => ({
@@ -53,6 +57,14 @@ export function RecentActivity() {
       meta: 'ROI Calculator',
       updatedAt: c.updatedAt,
       icon: Calculator,
+    })),
+    ...runs.map((r) => ({
+      key: `t-${r.id}`,
+      href: `${ROUTES.tdBulkDensity}/${r.id}`,
+      title: runTitle(r),
+      meta: 'Bulk Density',
+      updatedAt: r.updatedAt,
+      icon: Layers,
     })),
   ]
     .sort((x, y) => y.updatedAt - x.updatedAt)

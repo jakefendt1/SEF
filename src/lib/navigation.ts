@@ -3,7 +3,7 @@
 // read from here so a route can't be renamed in one place and go stale in
 // another.
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardList, Calculator, Ruler } from 'lucide-react'
+import { ClipboardList, Calculator, Layers, Ruler } from 'lucide-react'
 import { getSectionBySlug } from '../schema/sectionMap'
 
 export const ROUTES = {
@@ -13,6 +13,9 @@ export const ROUTES = {
   spiralEvalForm: '/spiral-eval/:id/:section?',
   aimGlide: '/aim-glide',
   beltElongation: '/belt-elongation',
+  tdBulkDensity: '/td-bulk-density',
+  /** A saved run, reopened. */
+  tdBulkDensityRun: '/td-bulk-density/:id',
 } as const
 
 export interface ToolDef {
@@ -51,6 +54,15 @@ export const TOOLS: ToolDef[] = [
       "Measure belt stretch with a tape measure when you haven't got the elongation ruler.",
     href: ROUTES.beltElongation,
     icon: Ruler,
+  },
+  {
+    id: 'td-bulk-density',
+    title: 'ThermoDrive Bulk Density Calculator',
+    shortTitle: 'Bulk Density',
+    description:
+      'How much a flighted ThermoDrive incline carries, and what sidewalls or guards add, for a bulk product.',
+    href: ROUTES.tdBulkDensity,
+    icon: Layers,
   },
 ]
 
@@ -120,6 +132,18 @@ export function resolveNav(path: string): NavContext {
       backHref: ROUTES.dashboard,
       backLabel: DASHBOARD_LABEL,
     }
+  }
+
+  if (p === ROUTES.tdBulkDensity) {
+    return {
+      title: 'ThermoDrive Bulk Density Calculator',
+      backHref: ROUTES.dashboard,
+      backLabel: DASHBOARD_LABEL,
+    }
+  }
+
+  if (p.startsWith(`${ROUTES.tdBulkDensity}/`)) {
+    return { title: 'Saved run', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
   }
 
   // Unknown route: still give the user a way home.

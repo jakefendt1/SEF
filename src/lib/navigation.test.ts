@@ -38,6 +38,19 @@ describe('resolveNav', () => {
     })
   })
 
+  it('sends the bulk density calculator back to the dashboard', () => {
+    expect(resolveNav('/td-bulk-density')).toEqual({
+      title: 'ThermoDrive Bulk Density Calculator',
+      backHref: '/',
+      backLabel: 'Tools',
+    })
+  })
+
+  it('titles a reopened bulk density run', () => {
+    expect(resolveNav('/td-bulk-density/abc').title).toBe('Saved run')
+    expect(resolveNav('/td-bulk-density/abc').backHref).toBe('/')
+  })
+
   it('still offers a way home from an unknown route', () => {
     expect(resolveNav('/nope/nothing-here').backHref).toBe('/')
   })
