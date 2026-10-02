@@ -475,6 +475,17 @@ export function buildWarnings(
     }
   }
   if (hasSidewalls) {
+    // The corrugation is a sine wave; product in its folds and in the gap is
+    // real but not reliably held, so the engine takes the footprint's inner
+    // edge as a flat wall at the flight ends. Say so -- it's a choice.
+    const gap = ctx.width.left.gapIn
+    add({
+      id: 'sidewall-corrugation',
+      severity: 'info',
+      message: `Pocket taken as square at the flight ends: product in the sidewall corrugations${gap > 0 ? ` and the ${len(gap)} sidewall-to-flight gap` : ''} isn't counted, so these numbers are on the conservative side.`,
+      cite: '',
+      fix: '',
+    })
     add({
       id: 'sidewall-splice',
       severity: 'info',

@@ -54,3 +54,23 @@ export const SWEEP_COLORS = {
 
 /** Sequential ramp for product depth (one hue, light -> dark). */
 export const DEPTH_RAMP = ['#FBF1DC', '#F3D79E', '#E8B04B', '#C88A22', '#8A5A12'] as const
+
+function mixHex(a: string, b: string, t: number): string {
+  const pa = parseInt(a.slice(1), 16)
+  const pb = parseInt(b.slice(1), 16)
+  const ch = (shift: number) => {
+    const x = (pa >> shift) & 255
+    const y = (pb >> shift) & 255
+    return Math.round(x + (y - x) * t)
+  }
+  return '#' + [16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * The colour the 3D heap is actually painted where an edge governs: the edge
+ * colour mixed into product amber, so it still reads as product. The 3D view
+ * and its key both use this, so the key always matches what's on screen.
+ */
+export function heapColor(kind: EdgeKind): string {
+  return mixHex(TD_COLORS.product, EDGE_COLORS[kind], 0.6)
+}

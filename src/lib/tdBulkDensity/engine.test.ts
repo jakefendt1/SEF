@@ -221,6 +221,43 @@ describe('Calibration against CalcLab', () => {
   })
 })
 
+describe('Jacksons Chips / Mez incline vs. CalcLab (2026-10-02)', () => {
+  // CalcLab: 5 in scoop, 55°, 7.7 in spacing, 11.596 in flight width on a
+  // 19.5 in belt, 7.5 lb/ft³, repose 40°, 75% fill -> 1.26 lb/flight,
+  // 29.73 ft/min for 3,500 lb/h, 7,064.3 lb/h at 60 ft/min.
+  const jacksons = makeInputs({
+    flightType: 'scoop',
+    flightHeightIn: 5,
+    flightThicknessIn: 0,
+    flightSpacingIn: 7.7,
+    inclineDeg: 55,
+    beltWidthIn: 19.5,
+    containment: 'sidewalls',
+    sidewallPitch: '50mm',
+    sidewallIndentIn: 2,
+    sidewallGapIn: 0.2,
+    sidewallHeightIn: 4,
+    densityLbFt3: 7.5,
+    reposeDeg: 40,
+    fillPct: 75,
+    targetLbPerHr: 3500,
+    beltSpeedFpm: 60,
+  })
+
+  it('CalcLab mode matches CalcLab within 1%', () => {
+    const t = computeTdBulkDensity({ ...jacksons, calcLabMode: true }, 'fine').throughput!
+    expectWithin(t.massPerFlightLb, 1.2591, 1)
+    expectWithin(t.minSpeedFpm!, 29.73, 1)
+    expectWithin(t.throughputLbPerHr!, 7064.3, 1)
+  })
+
+  it('the real configuration (4 in sidewalls on a 5 in scoop, 5° derate) is below CalcLab', () => {
+    const r = computeTdBulkDensity({ ...jacksons, flightThicknessIn: 0.16 }, 'fine')
+    expect(r.width!.flightWidthIn).toBeCloseTo(11.596, 3)
+    expect(r.throughput!.massPerFlightLb).toBeLessThan(1.26 * 0.8)
+  })
+})
+
 describe('Rules (plan §4, §6)', () => {
   it('T14: a 1.0 in indent is an error citing p.75', () => {
     const r = computeTdBulkDensity(base({ indentLeftIn: 1.0 }), 'coarse')
@@ -245,6 +282,13 @@ describe('Rules (plan §4, §6)', () => {
     const r = computeTdBulkDensity(base({ series: 'S8026', containment: 'sidewalls' }), 'coarse')
     expect(r.warnings.find((x) => x.id === 'sidewall-series')?.severity).toBe('error')
   })
+  it('sidewalls: the corrugations are drawn but not counted, and the tool says so', () => {
+    const r = computeTdBulkDensity(sidewalls(4), 'coarse')
+    // Carry width is the flight width -- nothing in the gap or the wave.
+    expect(r.width!.carryWidthIn).toBeCloseTo(9.5, 9)
+    expect(r.warnings.find((w) => w.id === 'sidewall-corrugation')?.message).toContain('conservative')
+  })
+
   it('sidewall heights are filtered by series and pitch', () => {
     expect(availableOptions({ series: 'S8050', flightType: 'deg90', sidewallPitch: '25mm' }).sidewallHeights).toEqual([1, 2])
     expect(availableOptions({ series: 'S8140', flightType: 'deg90', sidewallPitch: '40mm' }).sidewallHeights).toEqual([2, 2.3, 3, 4])

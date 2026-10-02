@@ -64,6 +64,8 @@ import { EdgeLegend } from './EdgeLegend'
 import { EdgeStep } from './EdgeStep'
 import { EndSection } from './EndSection'
 import { FlightStep } from './FlightStep'
+import { LayerPanel } from './LayerPanel'
+import { DEFAULT_LAYERS, type LayerState } from './layers'
 import { ProductStep } from './ProductStep'
 import { ResultsCard } from './ResultsCard'
 import { ResultsStep } from './ResultsStep'
@@ -113,6 +115,7 @@ export function TdBulkDensityHome() {
   const [cutZ, setCutZ] = useState(0.5)
   const [show3D, setShow3D] = useState(true)
   const [tab, setTab] = useState('side')
+  const [layers, setLayers] = useState<LayerState>(DEFAULT_LAYERS)
   const [pinned, setPinned] = useState<{ result: TdComputed; form: TdForm } | null>(null)
 
   const [meta, setMeta] = useState<RunMeta>(EMPTY_META)
@@ -408,28 +411,40 @@ export function TdBulkDensityHome() {
                           <div>
                             <p className="text-sm font-semibold mb-1">A — pinned</p>
                             <Suspense fallback={<Loading3D />}>
-                              <Pocket3D result={pinned.result} inputs={pinned.result.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasA} />
+                              <Pocket3D result={pinned.result} inputs={pinned.result.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasA} layers={layers} />
                             </Suspense>
                           </div>
                           <div>
                             <p className="text-sm font-semibold mb-1">B — now</p>
                             <Suspense fallback={<Loading3D />}>
-                              <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} />
+                              <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} layers={layers} />
                             </Suspense>
                           </div>
                         </div>
                       ) : (
                         <Suspense fallback={<Loading3D />}>
-                          <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} />
+                          <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} layers={layers} />
                         </Suspense>
                       ))}
                     {show3D && (
-                      <p className="text-sm text-muted-foreground">
-                        Drag to turn it, pinch to zoom. The colour on the product shows where it would spill from; the grey
-                        mesh is what full containment would hold.
-                      </p>
+                      <>
+                        <p className="text-sm text-muted-foreground">Drag to turn it, pinch to zoom.</p>
+                        <LayerPanel
+                          layers={layers}
+                          onChange={setLayers}
+                          edgeKinds={governingKindsPresent(shown.heap!)}
+                          hasWalls={
+                            shown.inputs.containment === 'sidewalls' ||
+                            shown.inputs.containment === 'sealed' ||
+                            (shown.inputs.containment === 'guards' && shown.inputs.guardClearanceIn !== null)
+                          }
+                        />
+                      </>
                     )}
-                    <EdgeLegend kinds={governingKindsPresent(shown.heap!)} />
+                    <div>
+                      <p className="text-sm font-medium text-foreground/80 mb-1">Key for the section views and depth map</p>
+                      <EdgeLegend kinds={governingKindsPresent(shown.heap!)} />
+                    </div>
                     <Tabs value={tab} onValueChange={setTab}>
                       <TabsList className="w-full h-auto grid grid-cols-2 sm:grid-cols-4 gap-1">
                         <TabsTrigger value="side" className="text-base min-h-[44px]">Side</TabsTrigger>

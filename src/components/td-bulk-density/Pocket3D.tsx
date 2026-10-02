@@ -12,7 +12,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { TdComputed } from '@/lib/tdBulkDensity/compute'
 import { EDGE_KINDS, EDGE_NONE, type HeapField, type TdInputs } from '@/lib/tdBulkDensity/types'
 import { guardActsAsWall } from '@/lib/tdBulkDensity/width'
-import { EDGE_COLORS, TD_COLORS } from './palette'
+import { DEFAULT_LAYERS, LAYER_ORDER, type LayerId, type LayerState } from './layers'
+import { TD_COLORS, heapColor } from './palette'
 
 const DEG = Math.PI / 180
 const TWEEN_MS = 300
@@ -26,6 +27,8 @@ interface Props {
   cutZ: number
   /** Called with the canvas so the PDF export can capture it. */
   onCanvas?: (canvas: HTMLCanvasElement | null) => void
+  /** Which layers show, and how the product is coloured. */
+  layers?: LayerState
 }
 
 interface Stage {
@@ -36,6 +39,9 @@ interface Stage {
   world: THREE.Group
   content: THREE.Group
   cuts: THREE.Group
+  /** One group per toggleable layer, inside `content` (cuts live in `cuts`). */
+  groups: Record<Exclude<LayerId, 'cuts'>, THREE.Group>
+  heapMat: THREE.MeshStandardMaterial | null
   heapGeo: THREE.BufferGeometry | null
   heapKey: string
   heights: Float32Array | null
@@ -52,6 +58,12 @@ function disposeGroup(g: THREE.Group) {
     else mat?.dispose?.()
   })
   g.clear()
+}
+
+function applyHeapColouring(mat: THREE.MeshStandardMaterial, byEdge: boolean) {
+  mat.vertexColors = byEdge
+  mat.color.set(byEdge ? '#ffffff' : TD_COLORS.product)
+  mat.needsUpdate = true
 }
 
 function heightsOf(field: HeapField): Float32Array {
@@ -72,7 +84,7 @@ function buildHeapGeometry(field: HeapField, heights: Float32Array): THREE.Buffe
       pos[i * 3 + 1] = heights[i]
       pos[i * 3 + 2] = (iz + 0.5) * dz
       const g = field.governing[i]
-      c.set(g === EDGE_NONE ? TD_COLORS.product : blend(EDGE_COLORS[EDGE_KINDS[g]]))
+      c.set(g === EDGE_NONE ? TD_COLORS.product : heapColor(EDGE_KINDS[g]))
       col[i * 3] = c.r
       col[i * 3 + 1] = c.g
       col[i * 3 + 2] = c.b
@@ -98,11 +110,6 @@ function buildHeapGeometry(field: HeapField, heights: Float32Array): THREE.Buffe
   geo.setIndex(idx)
   geo.computeVertexNormals()
   return geo
-}
-
-/** Mix the edge colour toward product amber so the heap still reads as product. */
-function blend(hex: string): THREE.Color {
-  return new THREE.Color(TD_COLORS.product).lerp(new THREE.Color(hex), 0.55)
 }
 
 function buildGhostGeometry(field: HeapField): THREE.BufferGeometry {
@@ -139,10 +146,48 @@ function webglAvailable(): boolean {
   }
 }
 
-export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props) {
+/** Sidewall pitch in inches, for drawing the corrugation. */
+const PITCH_IN: Record<string, number> = { '25mm': 25 / 25.4, '40mm': 40 / 25.4, '50mm': 50 / 25.4 }
+
+/**
+ * A corrugated sidewall: a sine wave in plan view between the footprint's
+ * inner edge (zInner) and outer edge (zOuter), one full wave per pitch.
+ * Drawn only -- the engine conservatively takes the inner edge as a flat
+ * wall and counts nothing in the corrugations.
+ */
+function corrugatedWall(
+  x0: number,
+  x1: number,
+  zInner: number,
+  zOuter: number,
+  height: number,
+  pitchIn: number,
+  mat: THREE.Material,
+) {
+  const perWave = 12
+  const segs = Math.max(8, Math.ceil(((x1 - x0) / pitchIn) * perWave))
+  const geo = new THREE.PlaneGeometry(x1 - x0, height, segs, 1)
+  const pos = geo.getAttribute('position') as THREE.BufferAttribute
+  const mid = (zInner + zOuter) / 2
+  const amp = (zOuter - zInner) / 2
+  for (let k = 0; k < pos.count; k++) {
+    const x = pos.getX(k) + (x0 + x1) / 2
+    const yv = pos.getY(k) + height / 2
+    // Touches the inner edge at x = 0, as the flight-side faces do.
+    const z = mid - amp * Math.cos((2 * Math.PI * x) / pitchIn)
+    pos.setXYZ(k, x, yv, z)
+  }
+  pos.needsUpdate = true
+  geo.computeVertexNormals()
+  return new THREE.Mesh(geo, mat)
+}
+
+export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers = DEFAULT_LAYERS }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Stage | null>(null)
   const [noGl] = useState(() => !webglAvailable())
+  // Read by the rebuild effect so a new heap material starts in the right mode.
+  const layersRef = useRef(layers)
 
   // One-time stage setup.
   useEffect(() => {
@@ -179,6 +224,14 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
     const world = new THREE.Group()
     const content = new THREE.Group()
     const cuts = new THREE.Group()
+    const groups = {
+      product: new THREE.Group(),
+      ghost: new THREE.Group(),
+      flights: new THREE.Group(),
+      walls: new THREE.Group(),
+      belt: new THREE.Group(),
+    }
+    content.add(...Object.values(groups))
     world.add(content, cuts)
     scene.add(world)
 
@@ -205,6 +258,8 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
       world,
       content,
       cuts,
+      groups,
+      heapMat: null,
       heapGeo: null,
       heapKey: '',
       heights: null,
@@ -216,7 +271,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
     return () => {
       ro.disconnect()
       controls.dispose()
-      disposeGroup(content)
+      Object.values(groups).forEach(disposeGroup)
       disposeGroup(cuts)
       renderer.dispose()
       renderer.domElement.remove()
@@ -244,24 +299,33 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
     const canTween = st.heapGeo && st.heapKey === key && st.heights
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-    disposeGroup(st.content)
+    Object.values(st.groups).forEach(disposeGroup)
     st.world.rotation.z = inputs.inclineDeg * DEG
 
     const beltMat = new THREE.MeshStandardMaterial({ color: TD_COLORS.belt, roughness: 0.6, metalness: 0 })
     const flightMat = new THREE.MeshStandardMaterial({ color: TD_COLORS.flight, roughness: 0.6, metalness: 0 })
     const off = width.flightOffsetIn
-    st.content.add(box(-1.4 * s, 2.4 * s, -0.3, 0, -off, inputs.beltWidthIn - off, beltMat))
+    st.groups.belt.add(box(-1.4 * s, 2.4 * s, -0.3, 0, -off, inputs.beltWidthIn - off, beltMat))
     for (const k of [-1, 0, 1, 2]) {
-      for (const sg of width.segments) st.content.add(flightMesh(result, k * s, sg.z0, sg.z1, flightMat))
+      for (const sg of width.segments) st.groups.flights.add(flightMesh(result, k * s, sg.z0, sg.z1, flightMat))
     }
 
     if (inputs.containment === 'sidewalls' || inputs.containment === 'sealed') {
       const swH = inputs.containment === 'sealed' ? H : inputs.sidewallHeightIn
-      const swMat = new THREE.MeshStandardMaterial({ color: TD_COLORS.sidewall, roughness: 0.6, metalness: 0, transparent: true, opacity: 0.3, depthWrite: false })
+      const swMat = new THREE.MeshStandardMaterial({
+        color: TD_COLORS.sidewall,
+        roughness: 0.6,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      })
       const g = width.left.gapIn
       const f = width.left.footprintIn
-      st.content.add(box(-1.4 * s, 2.4 * s, 0, swH, -g - f, -g, swMat))
-      st.content.add(box(-1.4 * s, 2.4 * s, 0, swH, W + g, W + g + f, swMat))
+      const pitch = PITCH_IN[inputs.sidewallPitch] ?? 1.969
+      st.groups.walls.add(corrugatedWall(-1.4 * s, 2.4 * s, -g, -g - f, swH, pitch, swMat))
+      st.groups.walls.add(corrugatedWall(-1.4 * s, 2.4 * s, W + g, W + g + f, swH, pitch, swMat))
     }
     if (inputs.containment === 'guards' && inputs.guardClearanceIn !== null) {
       const c = inputs.guardClearanceIn
@@ -271,8 +335,8 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
         transparent: true,
         opacity: guardActsAsWall(inputs) ? 0.55 : 0.3,
       })
-      st.content.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, -c - 0.12, -c, gMat))
-      st.content.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, W + c, W + c + 0.12, gMat))
+      st.groups.walls.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, -c - 0.12, -c, gMat))
+      st.groups.walls.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, W + c, W + c + 0.12, gMat))
     }
 
     // Heap: one geometry shared by the three pockets.
@@ -288,16 +352,18 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
       st.heapGeo?.dispose()
       heapGeo = buildHeapGeometry(field, next)
     }
-    const heapMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide })
+    const heapMat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide })
+    applyHeapColouring(heapMat, layersRef.current.colorByEdge)
+    st.heapMat = heapMat
     const ghostGeo = buildGhostGeometry(field)
     const ghostMat = new THREE.MeshBasicMaterial({ color: TD_COLORS.ghost, wireframe: true, transparent: true, opacity: 0.05, depthWrite: false })
     for (const k of [-1, 0, 1]) {
       const m = new THREE.Mesh(heapGeo, heapMat)
       m.position.x = k * s
-      st.content.add(m)
+      st.groups.product.add(m)
       const gm = new THREE.Mesh(ghostGeo, ghostMat)
       gm.position.x = k * s
-      st.content.add(gm)
+      st.groups.ghost.add(gm)
     }
 
     // Frame the camera on first build and whenever the geometry changes size.
@@ -344,6 +410,19 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas }: Props
     heapGeo.computeVertexNormals()
     st.render()
   }, [result, inputs])
+
+  // Layer visibility and product colouring: no rebuild, just flip and redraw.
+  useEffect(() => {
+    layersRef.current = layers
+    const st = stageRef.current
+    if (!st) return
+    for (const id of LAYER_ORDER) {
+      if (id === 'cuts') st.cuts.visible = layers.cuts
+      else st.groups[id].visible = layers[id]
+    }
+    if (st.heapMat) applyHeapColouring(st.heapMat, layers.colorByEdge)
+    st.render()
+  }, [layers])
 
   // Section cut planes.
   useEffect(() => {
