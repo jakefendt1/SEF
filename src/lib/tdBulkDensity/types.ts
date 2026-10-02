@@ -175,6 +175,27 @@ export interface ThroughputResult {
   inclineLiftLbf: number | null
 }
 
+/**
+ * What each pocket actually carries for the application (not its capacity):
+ * the product needed to hit the target throughput at the entered belt speed,
+ * or, without both, the pocket filled to the fill factor.
+ */
+export interface PocketLoad {
+  /** Share of the pocket's capacity this load needs (can exceed 1). */
+  fraction: number
+  source: 'target' | 'fill'
+  /** Product per flight this load is, lb. */
+  massLb: number
+  overCapacity: boolean
+  /** Height on the trailing flight face where the load's surface starts, in. Null when full. */
+  crestIn: number | null
+  volumeIn3: number
+  /** The load as a heap field. Null when it fills the pocket (draw the capacity heap). */
+  heap: HeapField | null
+  /** Belt speed at which the target would fill pockets to capacity, ft/min. */
+  speedForFullFpm: number | null
+}
+
 export type ComputeStatus = 'ok' | 'needs-input' | 'invalid-geometry'
 
 export interface TdResult {
@@ -198,6 +219,8 @@ export interface TdResult {
   wallsVolumeIn3: number
   edgeLossPct: number
   heap: HeapField | null
+  /** The application's actual load per pocket (see PocketLoad). */
+  load: PocketLoad | null
   throughput: ThroughputResult | null
   wallLoad: WallLoad | null
   /** Stationary guards only: drag per pocket per side, lbf. */

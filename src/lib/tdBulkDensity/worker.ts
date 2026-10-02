@@ -18,9 +18,11 @@ const pending: { compute: EngineRequest | null; sweeps: EngineRequest | null } =
 let scheduled = false
 
 function transferables(r: TdComputed): Transferable[] {
-  if (!r.heap) return []
-  const h = r.heap
-  return [h.bottom.buffer, h.top.buffer, h.governing.buffer, h.count.buffer, h.ghostTop.buffer]
+  const out: Transferable[] = []
+  for (const h of [r.heap, r.load?.heap]) {
+    if (h) out.push(h.bottom.buffer, h.top.buffer, h.governing.buffer, h.count.buffer, h.ghostTop.buffer)
+  }
+  return out
 }
 
 function runOne(job: EngineRequest) {

@@ -2,6 +2,7 @@
 // show. Pure; no UI imports.
 import { GRID, computeHeap } from './heap3d'
 import { guardDragPerPocket, guardDragTotal, wallLoad } from './loads'
+import { computePocketLoad } from './pocketLoad'
 import { computePocket2D } from './pocket2d'
 import { buildProfile } from './profiles'
 import { buildWarnings } from './rules'
@@ -28,10 +29,16 @@ function now(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now()
 }
 
+export interface ComputeOptions {
+  /** Solve the application's load shape (default true). Sweeps skip it. */
+  load?: boolean
+}
+
 export function computeTdBulkDensity(
   inputs: TdInputs,
   grid: GridSize = 'fine',
   system: UnitSystem = 'imperial',
+  options: ComputeOptions = {},
 ): TdComputed {
   const t0 = now()
   const gammaD = dynamicRepose(inputs)
@@ -61,6 +68,7 @@ export function computeTdBulkDensity(
     wallsVolumeIn3: 0,
     edgeLossPct: 0,
     heap: null,
+    load: null,
     throughput: null,
     wallLoad: null,
     guardDragPerPocketLbf: null,
@@ -78,6 +86,7 @@ export function computeTdBulkDensity(
         geometricCase: r.geometricCase,
         edgeLossPct: r.heap ? r.edgeLossPct : null,
         minSpeedFpm: r.throughput?.minSpeedFpm ?? null,
+        load: r.load,
         profileVerified: profile.verified,
       },
       system,
@@ -123,7 +132,7 @@ export function computeTdBulkDensity(
   }
 
   const g = GRID[grid]
-  const heap = computeHeap({
+  const heapParams = {
     profile,
     spacingIn: inputs.flightSpacingIn,
     inclineDeg: inputs.inclineDeg,
@@ -132,7 +141,8 @@ export function computeTdBulkDensity(
     end,
     voidPolygon: pocket.voidPolygon,
     ...g,
-  })
+  }
+  const heap = computeHeap(heapParams)
 
   const V = heap.volumeIn3
   const Vw = withPocket.wallsVolumeIn3
@@ -149,6 +159,11 @@ export function computeTdBulkDensity(
     targetLbPerHr: inputs.targetLbPerHr,
     inclineLengthFt: inputs.inclineLengthFt,
   })
+
+  const pocketLoad =
+    options.load === false
+      ? null
+      : computePocketLoad(inputs, heapParams, V, densityLbIn3(inputs.densityLbFt3) * V, grid)
 
   const load =
     end.kind === 'open'
@@ -170,6 +185,7 @@ export function computeTdBulkDensity(
     pocketVolumeIn3: V,
     edgeLossPct,
     heap: heap.field,
+    load: pocketLoad,
     spillEdges: heap.edges,
     throughput,
     wallLoad: load,

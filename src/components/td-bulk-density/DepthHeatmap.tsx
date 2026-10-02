@@ -32,7 +32,8 @@ function depthOf(field: HeapField, c: number): number {
 export function DepthHeatmap({ result, system }: { result: TdComputed; system: UnitSystem }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [sel, setSel] = useState<{ ix: number; iz: number } | null>(null)
-  const field = result.heap
+  // Your load when it's less than the pocket holds; otherwise the full heap.
+  const field = result.load?.heap ?? result.heap
   const width = result.width
 
   let maxDepth = 0
@@ -126,7 +127,7 @@ export function DepthHeatmap({ result, system }: { result: TdComputed; system: U
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        Looking down on one pocket: trailing flight on the left, leading flight on the right, left flight end at the top.
+        Depth of your load, looking down on one pocket: trailing flight on the left, leading flight on the right, left flight end at the top.
       </p>
       <canvas
         ref={canvasRef}

@@ -11,6 +11,8 @@ function Swatch({ id }: { id: LayerId }) {
   switch (id) {
     case 'product':
       return <span className={common} style={{ background: TD_COLORS.product, borderColor: TD_COLORS.productDark }} />
+    case 'capacity':
+      return <span className={common} style={{ background: `${TD_COLORS.product}38`, borderColor: TD_COLORS.product }} />
     case 'ghost':
       return (
         <span

@@ -28,6 +28,7 @@ import { formatLen, formatQty, type UnitSystem } from './units'
 import type {
   Containment,
   GeometricCase,
+  PocketLoad,
   Series,
   SidewallPitch,
   TdInputs,
@@ -95,6 +96,8 @@ export interface RuleContext {
   edgeLossPct: number | null
   minSpeedFpm: number | null
   profileVerified: boolean
+  /** The application's load per pocket, when computed. */
+  load?: PocketLoad | null
 }
 
 /**
@@ -378,6 +381,36 @@ export function buildWarnings(
       cite: '',
       fix: `Keep the gap at ${len(Math.max(MIN_SIDEWALL_GAP_IN, 0.5 * inputs.smallestDimIn))} or less where possible.`,
     })
+  }
+
+  const load = ctx.load
+  if (load && load.source === 'target' && inputs.beltSpeedFpm !== null && inputs.targetLbPerHr !== null) {
+    const pct = Math.round(load.fraction * 100)
+    const speed = formatQty(inputs.beltSpeedFpm, 'speed', system)
+    const target = formatQty(inputs.targetLbPerHr, 'massRate', system)
+    if (load.overCapacity) {
+      add({
+        id: 'over-capacity',
+        severity: 'warning',
+        message: `At ${speed}, carrying ${target} needs each pocket ${pct}% full — more than it can hold.`,
+        cite: '',
+        fix:
+          load.speedForFullFpm !== null
+            ? `Run at ${formatQty(load.speedForFullFpm, 'speed', system)} or faster (pockets brim-full), allow for the fill factor on top, or add containment.`
+            : 'Run faster or add containment.',
+      })
+    } else if (load.fraction > inputs.fillPct / 100 + 1e-9) {
+      add({
+        id: 'above-fill',
+        severity: 'warning',
+        message: `At ${speed}, carrying ${target} needs pockets ${pct}% full — more than the ${inputs.fillPct}% fill factor allows for.`,
+        cite: '',
+        fix:
+          ctx.minSpeedFpm !== null
+            ? `Run at ${formatQty(ctx.minSpeedFpm, 'speed', system)} or faster to stay within the fill factor.`
+            : 'Run faster to stay within the fill factor.',
+      })
+    }
   }
 
   if (!ctx.profileVerified) {

@@ -226,14 +226,23 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
   y += 25 + 7
   if (r.geometricCase) paragraph(CASE_WORDING[r.geometricCase])
 
-  const res: [string, string][] = [
+  const res: [string, string][] = []
+  if (r.load) {
+    const l = r.load
+    res.push([
+      l.source === 'target' ? 'Each pocket carries (for the target at this speed)' : `Each pocket carries (at ${i.fillPct}% fill)`,
+      `${formatQty(l.massLb, 'mass', sys)}  —  ${Math.round(l.fraction * 100)}% of capacity${l.overCapacity ? ' (more than it can hold)' : ''}`,
+    ])
+  }
+  res.push(
+    ['Pocket capacity, brim-full', formatQty((i.densityLbFt3 / 1728) * r.pocketVolumeIn3, 'mass', sys)],
     ['Flights per minute', t.flightsPerMin !== null ? t.flightsPerMin.toFixed(1) : '—'],
     ['Pocket area (side section)', formatQty(r.pocketAreaIn2, 'area', sys)],
     ['Pocket volume', formatQty(r.pocketVolumeIn3, 'volume', sys)],
     ['Flight load', `${formatQty(t.flightLoadLbf, 'force', sys)}  (${formatQty(t.flightLoadLbfPerIn, 'forcePerLen', sys)})`],
     ['Product load on belt', formatQty(t.beltLoadLbPerFt, 'linearLoad', sys)],
     ['Belt-pull input (CalcLab-compatible)', formatQty(t.areaLoadLbPerFt2, 'areaLoad', sys)],
-  ]
+  )
   if (t.inclineProductLb !== null) res.push(['Product on the incline', formatQty(t.inclineProductLb, 'mass', sys)])
   if (t.inclineLiftLbf !== null) res.push(['Product lift (for belt pull)', formatQty(t.inclineLiftLbf, 'force', sys)])
   if (r.wallLoad) {
@@ -255,7 +264,7 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
       y += image(imgs.pocket3d, MARGIN, y, CONTENT_W, 75) + 3
       setText(GRAY)
       normal(8)
-      text('Three pockets. Product is coloured by where it would spill; the grey mesh is full containment.', MARGIN, y)
+      text('Three pockets with your load. Clear amber is what a pocket can hold; colour shows where product would spill.', MARGIN, y)
       y += 6
     }
     if (imgs.side || imgs.end) {

@@ -59,6 +59,11 @@ export function SideSection({
   const zIn = (iz + 0.5) * field.dz
   const slice = sliceAtZ(field, iz)
   const shapes = sliceOutlines(slice, field.dx)
+  // The application's load, drawn solid; the capacity becomes an outline.
+  const loadField = result.load?.heap ?? null
+  const lf = loadField ?? field
+  const loadSlice = loadField ? sliceAtZ(loadField, indexAt(cutZ, loadField.nz)) : slice
+  const loadShapes = loadField ? sliceOutlines(loadSlice, loadField.dx) : shapes
 
   // Ghost: full containment outline along x.
   const ghostPts: [number, number][] = slice
@@ -76,7 +81,7 @@ export function SideSection({
   ]
 
   // Top-surface colouring by governing edge, one short segment per column.
-  const topSegs = slice.filter((c) => !Number.isNaN(c.top) && c.governing !== 255)
+  const topSegs = loadSlice.filter((c) => !Number.isNaN(c.top) && c.governing !== 255)
 
   // Bounding box.
   const beltStart = -0.35 * s
@@ -148,16 +153,21 @@ export function SideSection({
             ])}
             fill={TD_COLORS.belt}
           />
-          {/* Product */}
-          {shapes.map((sh, i) => (
+          {/* Pocket capacity, as an outline, when the load is less */}
+          {loadField &&
+            shapes.map((sh, i) => (
+              <polygon key={`c${i}`} points={pts(sh.points)} fill={TD_COLORS.product} fillOpacity={0.18} stroke={TD_COLORS.productDark} strokeWidth={1.5} strokeDasharray="5 4" />
+            ))}
+          {/* Your load */}
+          {loadShapes.map((sh, i) => (
             <polygon key={i} points={pts(sh.points)} fill={TD_COLORS.product} stroke={TD_COLORS.productDark} strokeWidth={1} />
           ))}
           {topSegs.map((c, i) => (
             <polyline
               key={i}
               points={pts([
-                [c.pos - field.dx / 2, c.top],
-                [c.pos + field.dx / 2, c.top],
+                [c.pos - lf.dx / 2, c.top],
+                [c.pos + lf.dx / 2, c.top],
               ])}
               stroke={EDGE_COLORS[EDGE_KINDS[c.governing]]}
               strokeWidth={4}
@@ -205,6 +215,11 @@ export function SideSection({
           </g>
         </svg>
       </div>
+      {loadField && (
+        <p className="text-sm text-muted-foreground">
+          Solid: your load. Dashed outline: what the pocket could hold before spilling.
+        </p>
+      )}
       <CutSlider
         id="side-cut-z"
         label={`Showing the cut ${formatLen(zIn, system)} from the left flight end`}

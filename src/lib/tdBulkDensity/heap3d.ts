@@ -38,6 +38,11 @@ export interface HeapParams {
   nx: number
   ny: number
   nz: number
+  /**
+   * For a partial load: product starts to roll back from this height on the
+   * trailing flight face instead of from the tip. Null = full capacity.
+   */
+  crestHeightIn?: number | null
 }
 
 export interface HeapResult {
@@ -50,12 +55,25 @@ export interface HeapResult {
   wallMaxDepthIn: number
 }
 
+/** u of the trailing face at height v (linear along the face polyline). */
+export function faceUAt(profile: FlightProfile, v: number): number {
+  const f = profile.face
+  if (v <= f[0][1]) return f[0][0]
+  for (let i = 1; i < f.length; i++) {
+    const [u0, v0] = f[i - 1]
+    const [u1, v1] = f[i]
+    if (v <= v1) return v1 === v0 ? u1 : u0 + ((u1 - u0) * (v - v0)) / (v1 - v0)
+  }
+  return f[f.length - 1][0]
+}
+
 /** Every spill edge for one pocket (plan §3.4 table). */
 export function buildSpillEdges(
   profile: FlightProfile,
   spacingIn: number,
   width: WidthModel,
   end: EndTreatment,
+  crestHeightIn: number | null = null,
 ): SpillEdge[] {
   const [tipU, tipV] = profile.tip
   const leadX = leadingTipX(profile, spacingIn)
@@ -64,6 +82,15 @@ export function buildSpillEdges(
 
   const along = (kind: SpillEdge['kind'], y: number, z: number) =>
     edges.push({ kind, q0: [0, y, z], q1: [baseEnd, y, z] })
+
+  // A partial load's crest: a line across the trailing face, below the tip.
+  // Same physics as the tip -- product above it rolls back -- just lower.
+  if (crestHeightIn !== null) {
+    const u = faceUAt(profile, crestHeightIn)
+    for (const s of width.segments) {
+      edges.push({ kind: 'trailing', q0: [u, crestHeightIn, s.z0], q1: [u, crestHeightIn, s.z1] })
+    }
+  }
 
   // Outer flight ends first: they are the edges most likely to reject a cell,
   // which lets the volume loop exit early.
@@ -101,7 +128,7 @@ export function computeHeap(p: HeapParams): HeapResult {
   const W = width.flightWidthIn
   const dz = W / nz
 
-  const edges = buildSpillEdges(profile, spacingIn, width, end)
+  const edges = buildSpillEdges(profile, spacingIn, width, end, p.crestHeightIn ?? null)
   const segs: SpillSeg[] = edges.map((e) => prepareSeg(e, k, cosA, sinA))
   const nSeg = segs.length
 

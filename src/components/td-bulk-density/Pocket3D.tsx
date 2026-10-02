@@ -112,6 +112,53 @@ function buildHeapGeometry(field: HeapField, heights: Float32Array): THREE.Buffe
   return geo
 }
 
+/**
+ * Closed sides for the product: a wall at each flight-segment end, from the
+ * bottom of each column to its top. Without them a partial load reads as a
+ * thin tilted sheet rather than a pile of product.
+ */
+function buildSkirtGeometry(field: HeapField, byEdge: (i: number) => THREE.Color): THREE.BufferGeometry {
+  const { nx, nz, dx, dz, x0 } = field
+  const inSeg = new Uint8Array(nz)
+  for (let iz = 0; iz < nz; iz++) {
+    for (let ix = 0; ix < nx && !inSeg[iz]; ix++) if (field.governing[ix * nz + iz] !== EDGE_NONE) inSeg[iz] = 1
+  }
+  const ends: number[] = []
+  for (let iz = 0; iz < nz; iz++) {
+    if (!inSeg[iz]) continue
+    if (iz === 0 || !inSeg[iz - 1]) ends.push(iz)
+    if (iz === nz - 1 || !inSeg[iz + 1]) ends.push(iz)
+  }
+  const pos: number[] = []
+  const col: number[] = []
+  const idx: number[] = []
+  for (const iz of ends) {
+    const z = (iz + 0.5) * dz
+    const base = pos.length / 3
+    for (let ix = 0; ix < nx; ix++) {
+      const c = ix * nz + iz
+      const x = x0 + (ix + 0.5) * dx
+      const filled = field.count[c] > 0
+      const top = filled ? field.top[c] : SUNK
+      const bot = filled ? Math.max(0, field.bottom[c]) : SUNK
+      pos.push(x, bot, z, x, top, z)
+      const k = byEdge(c)
+      col.push(k.r, k.g, k.b, k.r, k.g, k.b)
+    }
+    for (let ix = 0; ix < nx - 1; ix++) {
+      if (field.count[ix * nz + iz] === 0 || field.count[(ix + 1) * nz + iz] === 0) continue
+      const a = base + ix * 2
+      idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3)
+    }
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  geo.setIndex(idx)
+  geo.computeVertexNormals()
+  return geo
+}
+
 function buildGhostGeometry(field: HeapField): THREE.BufferGeometry {
   const h = new Float32Array(field.nx * field.nz)
   for (let i = 0; i < h.length; i++) h[i] = Number.isNaN(field.ghostTop[i]) ? SUNK : field.ghostTop[i]
@@ -226,6 +273,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
     const cuts = new THREE.Group()
     const groups = {
       product: new THREE.Group(),
+      capacity: new THREE.Group(),
       ghost: new THREE.Group(),
       flights: new THREE.Group(),
       walls: new THREE.Group(),
@@ -285,8 +333,12 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
   // Rebuild the scene contents when the result changes.
   useEffect(() => {
     const st = stageRef.current
-    const field = result.heap
-    if (!st || !field || !result.profile || !result.width) return
+    const capacity = result.heap
+    // The solid product is the application's load; the pocket's capacity is a
+    // translucent outline around it. When the load fills the pocket, they're
+    // the same heap.
+    const field = result.load?.heap ?? capacity
+    if (!st || !field || !capacity || !result.profile || !result.width) return
     const s = inputs.flightSpacingIn
     const W = result.width.flightWidthIn
     const H = result.profile.heightIn
@@ -324,8 +376,9 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
       const g = width.left.gapIn
       const f = width.left.footprintIn
       const pitch = PITCH_IN[inputs.sidewallPitch] ?? 1.969
+      // Cutaway: only the far sidewall is drawn. The camera starts on the
+      // near side, and a wall between it and the product hid the load.
       st.groups.walls.add(corrugatedWall(-1.4 * s, 2.4 * s, -g, -g - f, swH, pitch, swMat))
-      st.groups.walls.add(corrugatedWall(-1.4 * s, 2.4 * s, W + g, W + g + f, swH, pitch, swMat))
     }
     if (inputs.containment === 'guards' && inputs.guardClearanceIn !== null) {
       const c = inputs.guardClearanceIn
@@ -335,8 +388,8 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
         transparent: true,
         opacity: guardActsAsWall(inputs) ? 0.55 : 0.3,
       })
+      // Cutaway: far guard only, as for sidewalls.
       st.groups.walls.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, -c - 0.12, -c, gMat))
-      st.groups.walls.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, W + c, W + c + 0.12, gMat))
     }
 
     // Heap: one geometry shared by the three pockets.
@@ -355,15 +408,42 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
     const heapMat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide })
     applyHeapColouring(heapMat, layersRef.current.colorByEdge)
     st.heapMat = heapMat
-    const ghostGeo = buildGhostGeometry(field)
+    const ghostGeo = buildGhostGeometry(capacity)
+    const capGeo = result.load?.heap ? buildHeapGeometry(capacity, heightsOf(capacity)) : null
+    const capMat = new THREE.MeshStandardMaterial({
+      color: TD_COLORS.product,
+      roughness: 0.9,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    })
     const ghostMat = new THREE.MeshBasicMaterial({ color: TD_COLORS.ghost, wireframe: true, transparent: true, opacity: 0.05, depthWrite: false })
+    const tint = new THREE.Color()
+    const skirtGeo = buildSkirtGeometry(field, (c) => {
+      const g = field.governing[c]
+      return tint.set(g === EDGE_NONE ? TD_COLORS.product : heapColor(EDGE_KINDS[g])).clone()
+    })
+    const skirts: THREE.Mesh[] = []
     for (const k of [-1, 0, 1]) {
       const m = new THREE.Mesh(heapGeo, heapMat)
       m.position.x = k * s
       st.groups.product.add(m)
+      // Sides drawn at the final heights; hidden while the top is tweening.
+      const sk = new THREE.Mesh(skirtGeo, heapMat)
+      sk.position.x = k * s
+      sk.visible = !canTween
+      skirts.push(sk)
+      st.groups.product.add(sk)
       const gm = new THREE.Mesh(ghostGeo, ghostMat)
       gm.position.x = k * s
       st.groups.ghost.add(gm)
+      if (capGeo) {
+        const cm = new THREE.Mesh(capGeo, capMat)
+        cm.position.x = k * s
+        st.groups.capacity.add(cm)
+      }
     }
 
     // Frame the camera on first build and whenever the geometry changes size.
@@ -375,9 +455,9 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
         new THREE.Matrix4().makeRotationZ(inputs.inclineDeg * DEG),
       )
       st.controls.target.copy(center)
-      // Mostly side-on, a little above and downhill: the heap reads like the
-      // side section, and orbiting reveals the ends.
-      st.camera.position.set(center.x - span * 0.35, center.y + span * 0.45, center.z + span * 1.45)
+      // Side-on, a touch above: the load's solid side face reads like the side
+      // section (a wedge against the trailing flight). Orbit to see the rest.
+      st.camera.position.set(center.x - span * 0.1, center.y + span * 0.25, center.z + span * 1.6)
       st.camera.near = span / 200
       st.camera.far = span * 20
       st.camera.updateProjectionMatrix()
@@ -399,6 +479,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
         for (let i = 0; i < next.length; i++) pos.setY(i, prev[i] + (next[i] - prev[i]) * e)
         pos.needsUpdate = true
         heapGeo.computeVertexNormals()
+        if (t >= 1) skirts.forEach((sk) => (sk.visible = true))
         st.render()
         if (t < 1) raf = requestAnimationFrame(step)
       }
@@ -408,6 +489,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
     for (let i = 0; i < next.length; i++) pos.setY(i, next[i])
     pos.needsUpdate = true
     heapGeo.computeVertexNormals()
+    skirts.forEach((sk) => (sk.visible = true))
     st.render()
   }, [result, inputs])
 

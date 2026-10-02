@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { TdComputed } from '@/lib/tdBulkDensity/compute'
 import { CASE_WORDING } from '@/lib/tdBulkDensity/pocket2d'
+import { densityLbIn3 } from '@/lib/tdBulkDensity/throughput'
 import { formatQty, type UnitSystem } from '@/lib/tdBulkDensity/units'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,36 @@ function Big({ label, value, sub }: { label: string; value: string | null; sub: 
       </p>
       {value && <p className="text-sm text-muted-foreground">{sub}</p>}
     </div>
+  )
+}
+
+/** What the 3D view's solid product is, in words -- the load, not the capacity. */
+function LoadLine({ result, system }: { result: TdComputed; system: UnitSystem }) {
+  const l = result.load!
+  const i = result.inputs
+  const pct = Math.round(l.fraction * 100)
+  if (l.source === 'target' && i.targetLbPerHr !== null && i.beltSpeedFpm !== null) {
+    const what = `To carry ${formatQty(i.targetLbPerHr, 'massRate', system)} at ${formatQty(i.beltSpeedFpm, 'speed', system)}`
+    if (l.overCapacity) {
+      return (
+        <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-base">
+          {what}, each pocket would need <strong>{formatQty(l.massLb, 'mass', system)}</strong> — {pct}% of what it can
+          hold. It can't; the view shows pockets brim-full.
+        </p>
+      )
+    }
+    return (
+      <p className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-base">
+        {what}, each pocket carries <strong>{formatQty(l.massLb, 'mass', system)}</strong> — <strong>{pct}%</strong> of
+        what it can hold. That's the load the views show.
+      </p>
+    )
+  }
+  return (
+    <p className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-base">
+      The views show pockets at your {i.fillPct}% fill factor ({formatQty(l.massLb, 'mass', system)} each). Enter a
+      target throughput and a belt speed to see the load they need instead.
+    </p>
   )
 }
 
@@ -93,11 +124,13 @@ export function ResultsCard({
             sub={t.flightsPerMin !== null ? `${t.flightsPerMin.toFixed(1)} flights/min` : 'Enter a belt speed'}
           />
         </div>
+        {result.load && <LoadLine result={result} system={system} />}
         {result.geometricCase && (
           <p className="text-base">{CASE_WORDING[result.geometricCase]}</p>
         )}
         <dl>
-          <Row label="Product per flight" value={q(t.massPerFlightLb, 'mass')} />
+          <Row label={`Product per flight (at ${result.inputs.fillPct}% fill)`} value={q(t.massPerFlightLb, 'mass')} />
+          <Row label="Pocket capacity, brim-full" value={q(densityLbIn3(result.inputs.densityLbFt3) * result.pocketVolumeIn3, 'mass')} />
           <Row label="Pocket area (side section)" value={q(result.pocketAreaIn2, 'area')} />
           <Row label="Pocket volume" value={q(result.pocketVolumeIn3, 'volume')} />
           <Row

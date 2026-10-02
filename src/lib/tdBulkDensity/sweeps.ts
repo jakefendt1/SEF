@@ -60,7 +60,7 @@ export function yMetricFor(inputs: TdInputs): YMetric {
 }
 
 function valueOf(inputs: TdInputs, metric: YMetric): number | null {
-  const r = computeTdBulkDensity(inputs, 'sweep')
+  const r = computeTdBulkDensity(inputs, 'sweep', 'imperial', { load: false })
   if (r.status !== 'ok' || !r.throughput) return null
   return metric === 'throughput' ? r.throughput.throughputLbPerHr : r.throughput.massPerFlightLb
 }

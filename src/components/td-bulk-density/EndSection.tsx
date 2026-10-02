@@ -43,6 +43,11 @@ export function EndSection({
   const xIn = field.x0 + (ix + 0.5) * field.dx
   const slice = sliceAtX(field, ix)
   const shapes = sliceOutlines(slice, field.dz)
+  // The application's load, drawn solid; the capacity becomes an outline.
+  const loadField = result.load?.heap ?? null
+  const lf = loadField ?? field
+  const loadSlice = loadField ? sliceAtX(loadField, indexAt(cutX, loadField.nx)) : slice
+  const loadShapes = loadField ? sliceOutlines(loadSlice, loadField.dz) : shapes
   const hasSidewalls = inputs.containment === 'sidewalls' || inputs.containment === 'sealed'
   const swH = inputs.containment === 'sealed' ? H : inputs.sidewallHeightIn
   const top = Math.max(H, hasSidewalls ? swH : 0) + 1.2
@@ -120,8 +125,21 @@ export function EndSection({
             <text key={i} x={(off + (n.z0 + n.z1) / 2) * K} y={-(H + 0.25) * K} fontSize={fs - 2} textAnchor="middle" fill={EDGE_COLORS.notch}>notch</text>
           ))}
 
-          {/* Product */}
-          {shapes.map((sh, i) => (
+          {/* Pocket capacity, as an outline, when the load is less */}
+          {loadField &&
+            shapes.map((sh, i) => (
+              <polygon
+                key={`c${i}`}
+                points={sh.points.map(([z, y]) => p(off + z, y)).join(' ')}
+                fill={TD_COLORS.product}
+                fillOpacity={0.18}
+                stroke={TD_COLORS.productDark}
+                strokeWidth={1.5}
+                strokeDasharray="5 4"
+              />
+            ))}
+          {/* Your load */}
+          {loadShapes.map((sh, i) => (
             <polygon
               key={i}
               points={sh.points.map(([z, y]) => p(off + z, y)).join(' ')}
@@ -130,13 +148,13 @@ export function EndSection({
               strokeWidth={1}
             />
           ))}
-          {slice
+          {loadSlice
             .filter((c) => !Number.isNaN(c.top) && c.governing !== 255)
             .map((c, i) => (
               <line
                 key={i}
-                x1={(off + c.pos - field.dz / 2) * K}
-                x2={(off + c.pos + field.dz / 2) * K}
+                x1={(off + c.pos - lf.dz / 2) * K}
+                x2={(off + c.pos + lf.dz / 2) * K}
                 y1={-c.top * K}
                 y2={-c.top * K}
                 stroke={EDGE_COLORS[EDGE_KINDS[c.governing]]}
@@ -188,6 +206,11 @@ export function EndSection({
           </g>
         </svg>
       </div>
+      {loadField && (
+        <p className="text-sm text-muted-foreground">
+          Solid: your load. Dashed outline: what the pocket could hold before spilling.
+        </p>
+      )}
       <CutSlider
         id="end-cut-x"
         label={`Showing the cut ${formatLen(xIn, system)} uphill of the trailing flight (of ${formatLen(xMax, system)})`}
