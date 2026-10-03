@@ -3,4 +3,4 @@
  * the engine could change a computed result, so a reopened run can say
  * "results changed since this was saved" honestly.
  */
-export const ENGINE_VERSION = '1.0.0'
+export const ENGINE_VERSION = '1.1.0'

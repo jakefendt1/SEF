@@ -240,6 +240,12 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
     ['Pocket area (side section)', formatQty(r.pocketAreaIn2, 'area', sys)],
     ['Pocket volume', formatQty(r.pocketVolumeIn3, 'volume', sys)],
     ['Flight load', `${formatQty(t.flightLoadLbf, 'force', sys)}  (${formatQty(t.flightLoadLbfPerIn, 'forcePerLen', sys)})`],
+    [
+      'Flight load, brim-full (surge)',
+      t.flightLoadSurgeLbf !== null && t.flightLoadSurgeLbfPerIn !== null
+        ? `${formatQty(t.flightLoadSurgeLbf, 'force', sys)}  (${formatQty(t.flightLoadSurgeLbfPerIn, 'forcePerLen', sys)})`
+        : '—',
+    ],
     ['Product load on belt', formatQty(t.beltLoadLbPerFt, 'linearLoad', sys)],
     ['Belt-pull input (CalcLab-compatible)', formatQty(t.areaLoadLbPerFt2, 'areaLoad', sys)],
   )
@@ -333,6 +339,15 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
       y += lines.length * 4.3 + 1.5
     }
     y += 3
+    if (r.waterfall) {
+      heading('From CalcLab to this result', 30)
+      rows(
+        r.waterfall.map((w): [string, string] => [
+          w.label,
+          `${formatQty(w.massLb, 'mass', sys)}${w.throughputLbPerHr !== null ? `  |  ${formatQty(w.throughputLbPerHr, 'massRate', sys)}` : ''}${w.deltaPct !== null ? `  (${w.deltaPct >= 0 ? '+' : ''}${w.deltaPct.toFixed(0)}%)` : ''}`,
+        ]),
+      )
+    }
     heading('Engine notes', 30)
     const g = GRID.fine
     rows([

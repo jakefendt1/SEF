@@ -3,6 +3,7 @@
 // showing a zero.
 import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CalcLabWaterfall } from './CalcLabWaterfall'
 import type { TdComputed } from '@/lib/tdBulkDensity/compute'
 import { CASE_WORDING } from '@/lib/tdBulkDensity/pocket2d'
 import { densityLbIn3 } from '@/lib/tdBulkDensity/throughput'
@@ -138,6 +139,12 @@ export function ResultsCard({
             value={`${result.edgeLossPct.toFixed(0)}%`}
           />
           <Row label="Flight load" value={`${q(t.flightLoadLbf, 'force')} · ${q(t.flightLoadLbfPerIn, 'forcePerLen')}`} />
+          {t.flightLoadSurgeLbf !== null && t.flightLoadSurgeLbfPerIn !== null && (
+            <Row
+              label="Flight load, brim-full (surge)"
+              value={`${q(t.flightLoadSurgeLbf, 'force')} · ${q(t.flightLoadSurgeLbfPerIn, 'forcePerLen')}`}
+            />
+          )}
           <Row label="Product load on belt" value={q(t.beltLoadLbPerFt, 'linearLoad')} />
           <Row label="Belt-pull input (CalcLab)" value={q(t.areaLoadLbPerFt2, 'areaLoad')} />
           {t.inclineProductLb !== null && (
@@ -159,6 +166,7 @@ export function ResultsCard({
             <Row label="Guard drag on incline (add to belt pull)" value={q(result.guardDragTotalLbf, 'force')} />
           )}
         </dl>
+        {result.waterfall && <CalcLabWaterfall steps={result.waterfall} system={system} />}
       </div>
     )
   }

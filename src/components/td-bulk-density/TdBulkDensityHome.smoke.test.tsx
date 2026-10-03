@@ -18,6 +18,8 @@ import { ResultsCard } from './ResultsCard'
 import { ResultsStep } from './ResultsStep'
 import { SideSection } from './SideSection'
 import { TdBulkDensityHome } from './TdBulkDensityHome'
+import { LayerPanel } from './LayerPanel'
+import { DEFAULT_LAYERS } from './layers'
 
 const noop = () => {}
 
@@ -88,5 +90,20 @@ describe('steps and views', () => {
     )
     expect(end).toContain('flight (carry)')
     expect(end).toContain('mm')
+  })
+})
+
+describe('3D layers panel', () => {
+  it('has a show/hide box and a see-through slider for each layer that is on', () => {
+    const html = renderToStaticMarkup(
+      <LayerPanel layers={{ ...DEFAULT_LAYERS, capacity: true }} onChange={noop} edgeKinds={[0, 3]} hasWalls />,
+    )
+    expect(html).toContain('id="opacity-product"')
+    expect(html).toContain('id="opacity-capacity"')
+    expect(html).toContain('id="opacity-walls"')
+    // Layers that are off have no slider.
+    expect(html).not.toContain('id="opacity-ghost"')
+    expect(html).toContain('35% solid')
+    expect(html).toContain('Reset layers')
   })
 })

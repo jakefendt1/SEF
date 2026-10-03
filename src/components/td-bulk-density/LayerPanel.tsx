@@ -3,7 +3,7 @@
 // the spill-edge colours (the blended shades the heap is actually painted in).
 import { Checkbox } from '@/components/ui/checkbox'
 import { EDGE_KINDS } from '@/lib/tdBulkDensity/types'
-import { LAYER_INFO, LAYER_ORDER, type LayerId, type LayerState } from './layers'
+import { DEFAULT_LAYERS, LAYER_INFO, LAYER_ORDER, type LayerId, type LayerState } from './layers'
 import { EDGE_LABEL, TD_COLORS, heapColor } from './palette'
 
 function Swatch({ id }: { id: LayerId }) {
@@ -49,7 +49,7 @@ export function LayerPanel({
   const rows = LAYER_ORDER.filter((id) => id !== 'walls' || hasWalls)
   return (
     <fieldset className="rounded-lg border border-border bg-white px-3 py-2">
-      <legend className="px-1 text-sm font-semibold text-foreground/80">Layers — tap to show or hide</legend>
+      <legend className="px-1 text-sm font-semibold text-foreground/80">Layers — tap to show or hide, slide to make see-through</legend>
       <ul className="grid gap-x-4 sm:grid-cols-2">
         {rows.map((id) => (
           <li key={id}>
@@ -68,9 +68,38 @@ export function LayerPanel({
                 )}
               </span>
             </label>
+            {layers[id] && (
+              <div className="flex items-center gap-3 pl-9 pb-2">
+                <label htmlFor={`opacity-${id}`} className="text-sm text-muted-foreground w-24 shrink-0 whitespace-nowrap">
+                  {Math.round(layers.opacity[id] * 100)}% solid
+                </label>
+                <input
+                  id={`opacity-${id}`}
+                  type="range"
+                  min={5}
+                  max={100}
+                  step={5}
+                  value={Math.round(layers.opacity[id] * 100)}
+                  onChange={(e) =>
+                    onChange({ ...layers, opacity: { ...layers.opacity, [id]: Number(e.target.value) / 100 } })
+                  }
+                  aria-label={`${LAYER_INFO[id].label}: how solid`}
+                  className="flex-1 h-12 accent-[var(--brand)] cursor-pointer"
+                />
+              </div>
+            )}
           </li>
         ))}
       </ul>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => onChange(DEFAULT_LAYERS)}
+          className="min-h-[44px] px-2 text-sm font-semibold text-brand underline"
+        >
+          Reset layers
+        </button>
+      </div>
       {layers.product && (
         <div className="border-t border-border mt-1 pt-2 pb-1 space-y-1">
           <label className="flex items-center gap-3 min-h-[48px] cursor-pointer">

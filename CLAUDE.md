@@ -110,6 +110,18 @@ always passes exactly through the flight tip, a polygon vertex. A pocket is one
 polygon cut by one half-plane, so `clipBelowSurface` does it exactly. Don't
 swap a general clipper back in without the scoop tests passing.
 
+**Spill edges along the pocket follow the flight faces.** An edge at height h
+(sidewall tops) runs from the trailing face at u(h) to the leading back face at
+s − t + u(h) -- never from x = 0. For 75° and scoop flights x = 0 is behind
+the flight; starting there under-counted volume by up to ~44% (fixed in engine
+1.1.0, caught by an external audit; the 90° tests couldn't see it). The
+75°/scoop plateau tests in `engine.test.ts` guard it.
+
+**The CalcLab waterfall** (`waterfall.ts`): CalcLab (thin flight, walls, static
+repose) → real thickness → dynamic derate → flight-end spill. Steps 1–3 are 2D
+areas × carry width; the last is the 3D result. Its first step is calibrated
+against the Jacksons/Mez CalcLab run.
+
 **Results from the worker are structured clones.** Never compare a result's
 `inputs` to the live inputs by identity -- use `inputsKey` (key-sorted JSON).
 Identity comparison silently disabled the PDF button.

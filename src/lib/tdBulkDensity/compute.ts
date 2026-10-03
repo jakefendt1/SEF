@@ -11,6 +11,7 @@ import { computeThroughput, densityLbIn3, massPerFlight } from './throughput'
 import type { GridSize, TdInputs, TdResult } from './types'
 import type { UnitSystem } from './units'
 import { buildWidthModel, endTreatment, guardActsAsWall } from './width'
+import { calcLabWaterfall, type WaterfallStep } from './waterfall'
 
 export interface TdComputed extends TdResult {
   spillEdges: SpillEdge[]
@@ -18,6 +19,8 @@ export interface TdComputed extends TdResult {
    *  from the live form, so a result arriving a beat late can't be drawn
    *  against geometry it wasn't computed for. */
   inputs: TdInputs
+  /** CalcLab -> this result, one assumption at a time. Null in CalcLab mode. */
+  waterfall: WaterfallStep[] | null
 }
 
 export function dynamicRepose(inputs: TdInputs): number {
@@ -76,6 +79,7 @@ export function computeTdBulkDensity(
     computeMs: 0,
     spillEdges: [],
     inputs,
+    waterfall: null,
   }
 
   const finish = (r: TdComputed): TdComputed => {
@@ -92,6 +96,7 @@ export function computeTdBulkDensity(
       system,
     )
     r.blocked = r.warnings.some((w) => w.severity === 'error')
+    r.waterfall = options.load === false ? null : calcLabWaterfall(r)
     r.computeMs = now() - t0
     return r
   }
@@ -158,6 +163,8 @@ export function computeTdBulkDensity(
     speedFpm: inputs.beltSpeedFpm,
     targetLbPerHr: inputs.targetLbPerHr,
     inclineLengthFt: inputs.inclineLengthFt,
+    // Brim-full pocket: the surge case for the flight load.
+    capacityMassLb: densityLbIn3(inputs.densityLbFt3) * V,
   })
 
   const pocketLoad =

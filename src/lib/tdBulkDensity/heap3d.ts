@@ -80,8 +80,14 @@ export function buildSpillEdges(
   const baseEnd = spacingIn - profile.thicknessIn
   const edges: SpillEdge[] = []
 
-  const along = (kind: SpillEdge['kind'], y: number, z: number) =>
-    edges.push({ kind, q0: [0, y, z], q1: [baseEnd, y, z] })
+  // An edge along the pocket at height y runs from the trailing face to the
+  // leading flight's back face *at that height*. For 75° and scoop flights
+  // those faces lean uphill, so starting at x = 0 put the edge behind the
+  // trailing flight, where product can't reach -- over-predicting spill.
+  const along = (kind: SpillEdge['kind'], y: number, z: number) => {
+    const u = faceUAt(profile, Math.min(Math.max(y, 0), tipV))
+    edges.push({ kind, q0: [u, y, z], q1: [baseEnd + u, y, z] })
+  }
 
   // A partial load's crest: a line across the trailing face, below the tip.
   // Same physics as the tip -- product above it rolls back -- just lower.

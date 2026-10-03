@@ -169,6 +169,9 @@ export interface ThroughputResult {
   minSpeedFpm: number | null
   flightLoadLbf: number
   flightLoadLbfPerIn: number
+  /** Flight load with the pocket brim-full (a surge), lbf and lbf/in. */
+  flightLoadSurgeLbf: number | null
+  flightLoadSurgeLbfPerIn: number | null
   beltLoadLbPerFt: number
   areaLoadLbPerFt2: number
   inclineProductLb: number | null

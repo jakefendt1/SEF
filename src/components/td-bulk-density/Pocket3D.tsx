@@ -60,6 +60,31 @@ function disposeGroup(g: THREE.Group) {
   g.clear()
 }
 
+/** Opacity on every material in a layer. Fully opaque layers write depth;
+ *  see-through ones don't, so what's behind them still draws. */
+function setOpacity(obj: THREE.Object3D, op: number) {
+  obj.traverse((o) => {
+    const mat = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined
+    for (const m of Array.isArray(mat) ? mat : mat ? [mat] : []) {
+      const transparent = op < 0.999
+      if (m.transparent !== transparent) m.needsUpdate = true
+      m.transparent = transparent
+      m.opacity = op
+      m.depthWrite = !transparent
+    }
+  })
+}
+
+/** Visibility, opacity and product colouring for every layer, without a rebuild. */
+function applyLayers(st: Stage, layers: LayerState) {
+  for (const id of LAYER_ORDER) {
+    const g = id === 'cuts' ? st.cuts : st.groups[id]
+    g.visible = layers[id]
+    setOpacity(g, layers.opacity[id])
+  }
+  if (st.heapMat) applyHeapColouring(st.heapMat, layers.colorByEdge)
+}
+
 function applyHeapColouring(mat: THREE.MeshStandardMaterial, byEdge: boolean) {
   mat.vertexColors = byEdge
   mat.color.set(byEdge ? '#ffffff' : TD_COLORS.product)
@@ -376,9 +401,9 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
       const g = width.left.gapIn
       const f = width.left.footprintIn
       const pitch = PITCH_IN[inputs.sidewallPitch] ?? 1.969
-      // Cutaway: only the far sidewall is drawn. The camera starts on the
-      // near side, and a wall between it and the product hid the load.
+      // Both sidewalls; their opacity (Layers panel) lets you see in.
       st.groups.walls.add(corrugatedWall(-1.4 * s, 2.4 * s, -g, -g - f, swH, pitch, swMat))
+      st.groups.walls.add(corrugatedWall(-1.4 * s, 2.4 * s, W + g, W + g + f, swH, pitch, swMat))
     }
     if (inputs.containment === 'guards' && inputs.guardClearanceIn !== null) {
       const c = inputs.guardClearanceIn
@@ -388,8 +413,8 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
         transparent: true,
         opacity: guardActsAsWall(inputs) ? 0.55 : 0.3,
       })
-      // Cutaway: far guard only, as for sidewalls.
       st.groups.walls.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, -c - 0.12, -c, gMat))
+      st.groups.walls.add(box(-1.4 * s, 2.4 * s, 0.15, H + 0.4, W + c, W + c + 0.12, gMat))
     }
 
     // Heap: one geometry shared by the three pockets.
@@ -490,6 +515,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
     pos.needsUpdate = true
     heapGeo.computeVertexNormals()
     skirts.forEach((sk) => (sk.visible = true))
+    applyLayers(st, layersRef.current)
     st.render()
   }, [result, inputs])
 
@@ -498,11 +524,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
     layersRef.current = layers
     const st = stageRef.current
     if (!st) return
-    for (const id of LAYER_ORDER) {
-      if (id === 'cuts') st.cuts.visible = layers.cuts
-      else st.groups[id].visible = layers[id]
-    }
-    if (st.heapMat) applyHeapColouring(st.heapMat, layers.colorByEdge)
+    applyLayers(st, layers)
     st.render()
   }, [layers])
 
@@ -524,6 +546,7 @@ export default function Pocket3D({ result, inputs, cutX, cutZ, onCanvas, layers 
     const sideCut = new THREE.Mesh(new THREE.PlaneGeometry(xMax + 0.6, H + 0.6), mat)
     sideCut.position.set(xMax / 2, (H + 0.6) / 2, z)
     st.cuts.add(endCut, sideCut)
+    applyLayers(st, layersRef.current)
     st.render()
   }, [result, cutX, cutZ])
 

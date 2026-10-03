@@ -173,6 +173,31 @@ describe('3D heap (plan §3.4)', () => {
   })
 })
 
+describe('Sidewalls on leaning flights (audit 2026-10-03)', () => {
+  // The sidewall-top spill edge must start at the trailing face at sidewall
+  // height and end at the leading back face -- not at x = 0, which sits behind
+  // a 75° or scoop flight where product can't get to it.
+  const leaning = (flightType: 'deg75' | 'scoop', h: number) => ({
+    ...sidewalls(h),
+    flightType,
+    flightThicknessIn: 0.16,
+  })
+
+  for (const flightType of ['deg75', 'scoop'] as const) {
+    it(`${flightType}: sidewalls at or above the tip hold what walls hold, and volume never drops as they rise`, () => {
+      const walls = computeTdBulkDensity({ ...leaning(flightType, 5), calcLabMode: true, dynamicDerateDeg: 0 }, 'fine')
+      const vs = [2, 3, 4, 5, 6].map((h) => volume(leaning(flightType, h)))
+      for (let i = 1; i < vs.length; i++) expect(vs[i]).toBeGreaterThanOrEqual(vs[i - 1] - 0.5)
+      expectWithin(vs[3], walls.pocketVolumeIn3, 1)
+      expectWithin(vs[4], walls.pocketVolumeIn3, 1)
+    })
+  }
+
+  it('scoop: a sidewall just above the body holds at least what one at the body height does', () => {
+    expect(volume(leaning('scoop', 4.7))).toBeGreaterThanOrEqual(volume(leaning('scoop', 4.48)) - 0.5)
+  })
+})
+
 describe('Throughput (plan §3.7)', () => {
   const m = 0.61812
   const t = computeThroughput({
@@ -249,6 +274,28 @@ describe('Jacksons Chips / Mez incline vs. CalcLab (2026-10-02)', () => {
     expectWithin(t.massPerFlightLb, 1.2591, 1)
     expectWithin(t.minSpeedFpm!, 29.73, 1)
     expectWithin(t.throughputLbPerHr!, 7064.3, 1)
+  })
+
+  it('the waterfall starts at CalcLab and ends at this result', () => {
+    const r = computeTdBulkDensity({ ...jacksons, flightThicknessIn: 0.16 }, 'fine')
+    const w = r.waterfall!
+    expect(w.map((s) => s.id)).toEqual(['calclab', 'thickness', 'derate', 'edges'])
+    expectWithin(w[0].massLb, 1.2591, 1)
+    expectWithin(w[0].minSpeedFpm!, 29.73, 1)
+    expect(w[3].massLb).toBeCloseTo(r.throughput!.massPerFlightLb, 9)
+    // Each step's change chains to the next.
+    for (let i = 1; i < w.length; i++) expect(w[i].massLb).toBeCloseTo(w[i - 1].massLb * (1 + w[i].deltaPct! / 100), 9)
+    expect(computeTdBulkDensity({ ...jacksons, calcLabMode: true }, 'coarse').waterfall).toBeNull()
+  })
+
+  it('with nothing spilling at the flight ends, the last step changes nothing', () => {
+    const r = computeTdBulkDensity({ ...jacksons, flightThicknessIn: 0.16, sidewallHeightIn: 6 }, 'fine')
+    expectWithin(r.waterfall![3].massLb, r.waterfall![2].massLb, 0.5)
+  })
+
+  it('reports the flight load with the pocket brim-full (surge)', () => {
+    const t = computeTdBulkDensity({ ...jacksons, flightThicknessIn: 0.16 }, 'fine').throughput!
+    expect(t.flightLoadSurgeLbf!).toBeCloseTo(t.flightLoadLbf / 0.75, 9)
   })
 
   it('the real configuration (4 in sidewalls on a 5 in scoop, 5° derate) is below CalcLab', () => {

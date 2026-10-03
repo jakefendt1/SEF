@@ -33,6 +33,8 @@ export interface ThroughputParams {
   speedFpm: number | null
   targetLbPerHr: number | null
   inclineLengthFt: number | null
+  /** Product in a brim-full pocket, lb -- for the surge flight load. */
+  capacityMassLb?: number | null
 }
 
 export function computeThroughput(p: ThroughputParams): ThroughputResult {
@@ -52,6 +54,9 @@ export function computeThroughput(p: ThroughputParams): ThroughputResult {
     minSpeedFpm: hasTarget ? minSpeedFpm(p.targetLbPerHr as number, m, p.spacingIn) : null,
     flightLoadLbf: flightLoad,
     flightLoadLbfPerIn: p.carryWidthIn > 0 ? flightLoad / p.carryWidthIn : 0,
+    flightLoadSurgeLbf: p.capacityMassLb != null ? p.capacityMassLb * sinA : null,
+    flightLoadSurgeLbfPerIn:
+      p.capacityMassLb != null && p.carryWidthIn > 0 ? (p.capacityMassLb * sinA) / p.carryWidthIn : null,
     beltLoadLbPerFt: beltLoad,
     // CalcLab-compatible belt-pull input: spread over the full belt width.
     areaLoadLbPerFt2: m / ((p.beltWidthIn * p.spacingIn) / 144),
