@@ -3,7 +3,6 @@
 // showing a zero.
 import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CalcLabWaterfall } from './CalcLabWaterfall'
 import type { TdComputed } from '@/lib/tdBulkDensity/compute'
 import { CASE_WORDING } from '@/lib/tdBulkDensity/pocket2d'
 import { densityLbIn3 } from '@/lib/tdBulkDensity/throughput'
@@ -12,9 +11,9 @@ import { cn } from '@/lib/utils'
 
 function Big({ label, value, sub }: { label: string; value: string | null; sub: string }) {
   return (
-    <div className="rounded-lg border border-border bg-white px-4 py-3">
+    <div className="rounded-lg border border-border bg-white px-3 py-2">
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className={cn('font-mono-num font-bold leading-tight', value ? 'text-3xl text-foreground' : 'text-base text-muted-foreground py-2')}>
+      <p className={cn('font-mono-num font-bold leading-tight', value ? 'text-2xl text-foreground' : 'text-base text-muted-foreground py-1')}>
         {value ?? sub}
       </p>
       {value && <p className="text-sm text-muted-foreground">{sub}</p>}
@@ -31,21 +30,21 @@ function LoadLine({ result, system }: { result: TdComputed; system: UnitSystem }
     const what = `To carry ${formatQty(i.targetLbPerHr, 'massRate', system)} at ${formatQty(i.beltSpeedFpm, 'speed', system)}`
     if (l.overCapacity) {
       return (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-base">
+        <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-1.5 text-sm">
           {what}, each pocket would need <strong>{formatQty(l.massLb, 'mass', system)}</strong> — {pct}% of what it can
           hold. It can't; the view shows pockets brim-full.
         </p>
       )
     }
     return (
-      <p className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-base">
+      <p className="rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm">
         {what}, each pocket carries <strong>{formatQty(l.massLb, 'mass', system)}</strong> — <strong>{pct}%</strong> of
         what it can hold. That's the load the views show.
       </p>
     )
   }
   return (
-    <p className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-base">
+    <p className="rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm">
       The views show pockets at your {i.fillPct}% fill factor ({formatQty(l.massLb, 'mass', system)} each). Enter a
       target throughput and a belt speed to see the load they need instead.
     </p>
@@ -54,9 +53,9 @@ function LoadLine({ result, system }: { result: TdComputed; system: UnitSystem }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 py-1.5 border-b border-border/60 last:border-0">
-      <dt className="text-base text-muted-foreground">{label}</dt>
-      <dd className="text-base font-mono-num font-semibold text-right">{value}</dd>
+    <div className="flex justify-between gap-3 py-1 border-b border-border/60 last:border-0">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-mono-num font-semibold text-right">{value}</dd>
     </div>
   )
 }
@@ -112,8 +111,8 @@ export function ResultsCard({
   } else {
     const t = result.throughput!
     body = (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Big
             label="Minimum belt speed"
             value={t.minSpeedFpm !== null ? q(t.minSpeedFpm, 'speed') : null}
@@ -127,7 +126,7 @@ export function ResultsCard({
         </div>
         {result.load && <LoadLine result={result} system={system} />}
         {result.geometricCase && (
-          <p className="text-base">{CASE_WORDING[result.geometricCase]}</p>
+          <p className="text-sm">{CASE_WORDING[result.geometricCase]}</p>
         )}
         <dl>
           <Row label={`Product per flight (at ${result.inputs.fillPct}% fill)`} value={q(t.massPerFlightLb, 'mass')} />
@@ -166,7 +165,6 @@ export function ResultsCard({
             <Row label="Guard drag on incline (add to belt pull)" value={q(result.guardDragTotalLbf, 'force')} />
           )}
         </dl>
-        {result.waterfall && <CalcLabWaterfall steps={result.waterfall} system={system} />}
       </div>
     )
   }

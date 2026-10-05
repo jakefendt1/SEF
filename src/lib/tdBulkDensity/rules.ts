@@ -294,6 +294,18 @@ export function buildWarnings(
 
   // -------------------------------------------------------------- warnings
 
+  // 0 is an answer, but almost never a true one for a bulk product: it means
+  // the product flows like a liquid, and with open flight ends it all spills.
+  if (inputs.reposeDeg === 0) {
+    add({
+      id: 'repose-zero',
+      severity: 'warning',
+      message: 'Angle of repose is 0°: the product would flow like a liquid. Most bulk products are 25–45°.',
+      cite: '',
+      fix: 'Check the value, or measure it with the repose helper.',
+    })
+  }
+
   if (inputs.rollerLimiters) {
     const indents = hasSidewalls ? [inputs.sidewallIndentIn] : [inputs.indentLeftIn, inputs.indentRightIn]
     const short = indents.some((v) => v < ROLLER_LIMITER_MIN_IN - LEN_TOL)
@@ -438,7 +450,23 @@ export function buildWarnings(
   if (ctx.geometricCase === 'meets') {
     add({ id: 'case-meets', severity: 'info', message: 'Product surface meets the next flight (CalcLab intersection flag). Handled correctly — not an error.', cite: '', fix: '' })
   } else if (ctx.geometricCase === 'level') {
-    add({ id: 'case-level', severity: 'info', message: 'Product stacks level with the flight tips (repose ≥ incline). Handled correctly — not an error.', cite: '', fix: '' })
+    // The product won't slide back against the flight, so the model fills the
+    // pocket only level with the flight tips: anything heaped above them isn't
+    // counted (it isn't held -- it falls off over the head shaft). So the
+    // pocket area stops growing here while mass per flight can still rise as
+    // less spills off the open ends. Say so, so the two don't look like a bug.
+    const repose = inputs.calcLabMode ? inputs.reposeDeg : Math.max(0, inputs.reposeDeg - inputs.dynamicDerateDeg)
+    const derated = inputs.calcLabMode || inputs.dynamicDerateDeg === 0 ? '' : ` (${inputs.reposeDeg}° less the ${inputs.dynamicDerateDeg}° dynamic allowance)`
+    add({
+      id: 'case-level',
+      severity: 'warning',
+      message:
+        `Angle of repose ${repose}°${derated} is at or above the ${inputs.inclineDeg}° incline. The product won't slide back ` +
+        'against the flight, so the pocket is counted only level with the flight tips; anything heaped above them is left out. ' +
+        'The pocket area stops changing above this point, while mass per flight can still rise as less spills off the ends.',
+      cite: '',
+      fix: 'Treat the result as conservative, and confirm the repose with a measurement.',
+    })
   }
 
   if (

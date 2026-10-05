@@ -363,3 +363,29 @@ describe('Rules (plan §4, §6)', () => {
     expect(order.map((s) => rank[s])).toEqual([...order.map((s) => rank[s])].sort())
   })
 })
+
+describe('Angle of repose warnings (Jake, 2026-10-05)', () => {
+  const ids = (i: Partial<TdInputs>) => computeTdBulkDensity(makeInputs(i), 'coarse').warnings.map((w) => w.id)
+  const warning = (i: Partial<TdInputs>, id: string) =>
+    computeTdBulkDensity(makeInputs(i), 'coarse').warnings.find((w) => w.id === id)
+
+  it('flags a 0° repose as a warning, not an error', () => {
+    expect(warning({ reposeDeg: 0 }, 'repose-zero')?.severity).toBe('warning')
+    expect(ids({ reposeDeg: 35 })).not.toContain('repose-zero')
+  })
+
+  it('warns when the repose (after the dynamic allowance) reaches the incline', () => {
+    // 35° - 5° = 30° against a 30° incline: the level case.
+    const w = warning({ inclineDeg: 30, reposeDeg: 35 }, 'case-level')
+    expect(w?.severity).toBe('warning')
+    expect(w?.message).toContain('30°')
+    expect(w?.message).toContain('35° less the 5° dynamic allowance')
+    expect(ids({ inclineDeg: 30, reposeDeg: 30 })).not.toContain('case-level')
+  })
+
+  it('above that point the pocket area stops changing; the warning says why', () => {
+    const area = (r: number) => computeTdBulkDensity(makeInputs({ inclineDeg: 30, reposeDeg: r }), 'coarse').pocketAreaIn2
+    expect(area(40)).toBeCloseTo(area(50), 6)
+    expect(area(30)).toBeLessThan(area(40))
+  })
+})

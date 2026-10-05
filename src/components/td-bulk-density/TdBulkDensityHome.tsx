@@ -441,8 +441,8 @@ export function TdBulkDensityHome() {
                         />
                       </>
                     )}
-                    <div>
-                      <p className="text-sm font-medium text-foreground/80 mb-1">Key for the section views and depth map</p>
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md bg-secondary/40 px-2 py-1">
+                      <p className="text-xs font-semibold text-foreground/70">Key:</p>
                       <EdgeLegend kinds={governingKindsPresent(shown.heap!)} />
                     </div>
                     <Tabs value={tab} onValueChange={setTab}>
