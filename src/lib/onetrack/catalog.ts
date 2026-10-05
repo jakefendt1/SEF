@@ -18,15 +18,19 @@ import {
   SPROCKET_SPACERS,
   STRAIGHT_ROLLERS,
   WEARSTRIPS,
+  WEARSTRIP_ACCESSORIES,
   type FrameSize,
   type RawWearstrip,
+  type Source,
   type WearstripFamily,
+  type WearstripMaterial,
 } from './data/menu'
 
-export type { FrameSize, WearstripFamily } from './data/menu'
+export type { FrameSize, WearstripFamily, WearstripMaterial } from './data/menu'
 
 export type CategoryId =
   | 'wearstrip'
+  | 'wearstripAccessories'
   | 'beltPullers'
   | 'rodRemovers'
   | 'rulers'
@@ -63,13 +67,21 @@ export interface CatalogItem {
   notePrompt?: string
   /** Picture cropped from the menu page, under public/. */
   image?: string
+  /** Where `page` points: the OneTrack menu (default) or the engineering manual. */
+  source?: Source
+}
+
+/** "menu p. 9" or "Eng. manual p. 472", so a rep can find the page. */
+export function refLabel(item: Pick<CatalogItem, 'page' | 'source'>): string {
+  return item.source === 'manual' ? `Eng. manual p. ${item.page}` : `menu p. ${item.page}`
 }
 
 export interface WearstripItem extends CatalogItem {
   category: 'wearstrip'
   partNumber: string
   family: WearstripFamily
-  color: 'Natural' | 'Blue'
+  color: 'Natural' | 'Blue' | 'Grey'
+  material: WearstripMaterial
   frameIn: FrameSize | null
   /** Stock length one unit of `uom` buys, in inches (120 = 10 ft, 6000 = 500 ft). */
   stockLengthIn: number
@@ -106,8 +118,10 @@ const wearstrips: WearstripItem[] = WEARSTRIPS.map((w) => ({
   series: [],
   uom: w.uom,
   page: w.page,
+  source: w.source,
   family: w.family,
   color: w.color,
+  material: w.material ?? 'UHMW-PE',
   frameIn: w.frameIn ?? null,
   stockLengthIn: w.lengthFt * 12,
   dims: w.dims ?? null,
@@ -115,6 +129,7 @@ const wearstrips: WearstripItem[] = WEARSTRIPS.map((w) => ({
 
 const items: CatalogItem[] = [
   ...wearstrips,
+  ...WEARSTRIP_ACCESSORIES.map((r) => simple('wearstripAccessories', r)),
   ...BELT_PULLERS.map((r) => ({
     id: pnId(r.partNumber),
     category: 'beltPullers' as const,
@@ -192,13 +207,14 @@ const items: CatalogItem[] = [
     series: [],
     uom: 'each',
     page: r.page,
+    source: r.source,
     notePrompt: r.prompt,
   })),
 ]
 
 function simple(
   category: CategoryId,
-  r: { description: string; partNumber: string; page: number },
+  r: { description: string; partNumber: string; page: number; source?: Source },
 ): CatalogItem {
   return {
     id: pnId(r.partNumber),
@@ -209,6 +225,7 @@ function simple(
     series: [],
     uom: 'each',
     page: r.page,
+    source: r.source,
   }
 }
 
@@ -227,6 +244,7 @@ const IMAGE_BY_ID: Record<string, string> = {
   'quote-cleanlock-shaft': menuImage('cleanlock-shaft'),
   'quote-ss-shaft': menuImage('ss-shaft'),
   'quote-cip': menuImage('cip'),
+  'c9ax1xxxxxxx-01': '/onetrack/manual/ss-clip-nut.png',
 }
 const IMAGE_BY_CATEGORY: Partial<Record<CategoryId, string>> = {
   rulers: menuImage('ruler'),
@@ -260,15 +278,22 @@ export function itemsIn(category: CategoryId): CatalogItem[] {
 }
 
 /** The wearstrip part for a family + color (flat / flanged) or frame (radius). */
+/**
+ * The wearstrip part for a family and the choices that tell its parts apart:
+ * frame thickness (radius hold-downs), material (natural vs oil-filled) and
+ * color (OneTrack flat / flanged). A choice is only needed where the family
+ * actually offers more than one; null when the choices don't pin one part.
+ */
 export function findWearstrip(
   family: WearstripFamily,
-  opts: { color?: 'Natural' | 'Blue' | null; frameIn?: FrameSize | null },
+  opts: { color?: string | null; frameIn?: FrameSize | null; material?: WearstripMaterial | null },
 ): WearstripItem | null {
-  return (
-    WEARSTRIP_ITEMS.find(
-      (w) =>
-        w.family === family &&
-        (w.frameIn === null ? w.color === opts.color : w.frameIn === opts.frameIn),
-    ) ?? null
-  )
+  let list = WEARSTRIP_ITEMS.filter((w) => w.family === family)
+  const narrow = <K extends 'frameIn' | 'material' | 'color'>(key: K, want: WearstripItem[K] | null | undefined) => {
+    if (new Set(list.map((w) => w[key])).size > 1) list = list.filter((w) => w[key] === want)
+  }
+  narrow('frameIn', opts.frameIn)
+  narrow('material', opts.material)
+  narrow('color', opts.color as WearstripItem['color'] | null | undefined)
+  return list.length === 1 ? list[0] : null
 }

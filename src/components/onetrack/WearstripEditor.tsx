@@ -8,8 +8,9 @@ import { ChoiceButtons, CheckField, NumberField } from '@/components/td-bulk-den
 import type { Unit } from '@/lib/measurement'
 import { findWearstrip } from '@/lib/onetrack/catalog'
 import {
-  DIM_LABELS,
   PROFILES,
+  dimLabel,
+  materialsFor,
   colorsFor,
   defaultQuoteAs,
   framesFor,
@@ -52,7 +53,14 @@ function ProfileTile({ p, selected, onPick }: { p: WearstripProfile; selected: b
         </span>
       )}
       {p.family && (
-        <span className="absolute top-2 left-2 rounded-full bg-brand text-white text-xs font-semibold px-2 py-0.5">OneTrack</span>
+        <span
+          className={cn(
+            'absolute top-2 left-2 rounded-full text-xs font-semibold px-2 py-0.5',
+            getFamily(p.family).brand === 'OneTrack' ? 'bg-brand text-white' : 'bg-secondary text-foreground border border-border',
+          )}
+        >
+          {getFamily(p.family).brand === 'OneTrack' ? 'OneTrack' : 'Intralox P/N'}
+        </span>
       )}
       {p.image ? (
         <img src={p.image} alt="" className="w-full aspect-[4/3] object-contain bg-white rounded-md" loading="lazy" />
@@ -107,13 +115,17 @@ export function WearstripEditor({
       ...w,
       profileId: p.id,
       quoteAs,
-      // A color or frame only means something for the family it was picked for.
+      // A color, frame or material only means something for the family it was picked for.
       color: quoteAs === w.quoteAs ? w.color : null,
       frameIn: quoteAs === w.quoteAs ? w.frameIn : null,
+      material: quoteAs === w.quoteAs ? w.material : null,
     }))
   }
 
-  const pickQuoteAs = (q: QuoteAs) => setWs((w) => ({ ...w, quoteAs: q, color: q === w.quoteAs ? w.color : null, frameIn: q === w.quoteAs ? w.frameIn : null }))
+  const pickQuoteAs = (q: QuoteAs) =>
+    setWs((w) =>
+      q === w.quoteAs ? w : { ...w, quoteAs: q, color: null, frameIn: null, material: null },
+    )
 
   const rails = ws.rails ?? 0
   const row = wearstripRow(ws, unit)
@@ -123,6 +135,9 @@ export function WearstripEditor({
   const catalogDims = family && (family.family === 'onetrackFlat' || family.family === 'onetrackFlanged')
     ? findWearstrip(family.family, { color: 'Natural' })?.dims
     : null
+  const frames = family ? framesFor(family.family) : []
+  const materials = family ? materialsFor(family.family) : []
+  const colors = family ? colorsFor(family.family, ws.material) : []
 
   const setRails = (text: string) => {
     const n = Number.parseInt(text, 10)
@@ -167,9 +182,15 @@ export function WearstripEditor({
             <ProfileTile key={p.id} p={p} selected={ws.profileId === p.id} onPick={() => pickProfile(p)} />
           ))}
         </div>
-        <p className="text-base font-semibold pt-2">Radius belts (OneTrack)</p>
+        <p className="text-base font-semibold pt-2">Radius belt hold-downs</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
           {PROFILES.filter((p) => p.row === 'radius').map((p) => (
+            <ProfileTile key={p.id} p={p} selected={ws.profileId === p.id} onPick={() => pickProfile(p)} />
+          ))}
+        </div>
+        <p className="text-base font-semibold pt-2">Stainless steel-backed (mounts to cross members)</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          {PROFILES.filter((p) => p.row === 'ssBacked').map((p) => (
             <ProfileTile key={p.id} p={p} selected={ws.profileId === p.id} onPick={() => pickProfile(p)} />
           ))}
         </div>
@@ -196,38 +217,62 @@ export function WearstripEditor({
           <ChoiceButtons<QuoteAs>
             title="Quote as"
             value={ws.quoteAs ?? ('' as never)}
-            columns={profile.row === 'radius' ? 2 : 3}
+            columns={profile.row === 'standard' ? 2 : 'auto'}
             onChange={pickQuoteAs}
             options={quoteAsOptions(profile).map((q) => ({
               value: q,
               label: quoteAsLabel(q),
-              detail: q === 'match' ? 'No part number. CS works from your measurements and photos.' : 'Has an Intralox part number.',
+              detail:
+                q === 'match'
+                  ? 'No part number. CS works from your measurements and photos.'
+                  : q === profile.family
+                    ? 'Same part as what\'s installed. Has an Intralox part number.'
+                    : 'Has an Intralox part number.',
             }))}
           />
           {family && (
             <div className="space-y-3 rounded-xl border border-border bg-white p-3">
-              <div className={cn('grid gap-2', family.drawings.length > 1 ? 'grid-cols-3' : 'grid-cols-1')}>
+              <div className={cn('grid gap-2', family.drawings.length > 2 ? 'grid-cols-3' : family.drawings.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
                 {family.drawings.map((d) => (
                   <img key={d} src={d} alt={`${family.label} drawing`} className="w-full max-h-64 object-contain" loading="lazy" />
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">Intralox drawing. Compare it with what's on the frame.</p>
-              {family.option === 'color' ? (
-                <ChoiceButtons
-                  title="Color"
-                  value={ws.color ?? ('' as never)}
-                  columns={2}
-                  onChange={(c) => set({ color: c })}
-                  options={colorsFor(family.family).map((c) => ({ value: c, label: c }))}
-                />
-              ) : (
+              {frames.length > 0 && (
                 <ChoiceButtons
                   title="Conveyor frame thickness (A on the drawing)"
                   value={ws.frameIn ?? ('' as never)}
                   columns={3}
                   onChange={(f) => set({ frameIn: f })}
-                  options={framesFor(family.family).map((f) => ({ value: f, label: `${f} in` }))}
+                  options={frames.map((f) => ({ value: f, label: `${f} in` }))}
                 />
+              )}
+              {materials.length > 1 && (
+                <ChoiceButtons
+                  title="Material"
+                  value={ws.material ?? ('' as never)}
+                  columns={2}
+                  onChange={(m) => set({ material: m, color: null })}
+                  options={materials.map((m) => ({
+                    value: m,
+                    label: m,
+                    detail: m === 'UHMW-PE' ? 'Natural' : 'Self-lubricating, grey',
+                  }))}
+                />
+              )}
+              {colors.length > 1 && (
+                <ChoiceButtons
+                  title="Color"
+                  value={ws.color ?? ('' as never)}
+                  columns={2}
+                  onChange={(c) => set({ color: c as WearstripWorksheet['color'] })}
+                  options={colors.map((c) => ({ value: c, label: c }))}
+                />
+              )}
+              {(family.family === 'ssBackedT' || family.family === 'ssBackedL') && (
+                <p className="text-sm text-muted-foreground">
+                  The stainless clip and nut are sold separately: add them from Parts, under Wearstrip clips.
+                </p>
               )}
             </div>
           )}
@@ -249,18 +294,16 @@ export function WearstripEditor({
             <div className="space-y-3">
               {catalogDims && (
                 <p className="text-sm rounded-lg bg-secondary px-3 py-2">
-                  {family?.label} is {formatDim(catalogDims.widthIn, unit)} {unit} wide × {formatDim(catalogDims.heightIn, unit)} {unit} high
                   {catalogDims.flangeWidthIn
-                    ? `, with a ${formatDim(catalogDims.flangeWidthIn, unit)} × ${formatDim(catalogDims.flangeHeightIn ?? 0, unit)} ${unit} flange`
-                    : ''}
-                  .
+                    ? `${family?.label} is ${formatDim(catalogDims.widthIn + catalogDims.flangeWidthIn, unit)} ${unit} wide overall (a ${formatDim(catalogDims.widthIn, unit)} ${unit} wear surface plus a ${formatDim(catalogDims.flangeWidthIn, unit)} ${unit} flange), ${formatDim(catalogDims.heightIn, unit)} ${unit} to the wear surface, and the flange stands ${formatDim(catalogDims.flangeHeightIn ?? 0, unit)} ${unit} above it.`
+                    : `${family?.label} is ${formatDim(catalogDims.widthIn, unit)} ${unit} wide × ${formatDim(catalogDims.heightIn, unit)} ${unit} high.`}
                 </p>
               )}
               {profile.dims.map((k) => (
                 <DimInput
                   key={`${k}-${unit}`}
                   id={`ws-dim-${k}`}
-                  title={`${k}: ${DIM_LABELS[k]}`}
+                  title={`${k}: ${dimLabel(profile, k)}`}
                   valueIn={ws.dims[k]}
                   unit={unit}
                   onChange={(v) => setWs((w) => ({ ...w, dims: { ...w.dims, [k]: v } }))}

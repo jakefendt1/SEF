@@ -146,6 +146,11 @@ describe('missingForWearstrip', () => {
   it('asks for frame thickness on radius items', () => {
     expect(missingForWearstrip(ws({ use: 'Hold-down', profileId: 'radius-angled', quoteAs: 'radiusAngled', rails: 1, lengthsIn: [10] }))).toEqual([
       'Frame thickness',
+      'Material',
+    ])
+    // A single-material family never asks.
+    expect(missingForWearstrip(ws({ use: 'Hold-down', profileId: 's2400-hold-down', quoteAs: 's2400HoldDown', rails: 1, lengthsIn: [10] }))).toEqual([
+      'Frame thickness',
     ])
   })
 
@@ -166,6 +171,20 @@ describe('wearstripWarnings', () => {
     expect(wearstripWarnings(flat({ dims: { W: 1.25, H: 1.5 } }), 'in')).toEqual([
       "Measured 1.25 in wide; OneTrack flat is 1 in. Check the frame fits, or quote 'Match the installed profile'.",
     ])
+  })
+
+  it('checks flanged against 1.25 in overall and 1.5 in to the wear surface', () => {
+    const flanged = flat({ profileId: 'onetrack-flanged', quoteAs: 'onetrackFlanged' })
+    expect(wearstripWarnings({ ...flanged, dims: { W: 1.25, H: 1.5 } }, 'in')).toEqual([])
+    expect(wearstripWarnings({ ...flanged, dims: { W: 1, H: 2 } }, 'in')).toEqual([
+      "Measured 1 in wide; OneTrack flanged is 1.25 in. Check the frame fits, or quote 'Match the installed profile'.",
+      "Measured 2 in to the wear surface; OneTrack flanged is 1.5 in. Check the frame fits, or quote 'Match the installed profile'.",
+    ])
+  })
+
+  it('a Word-form clip-on now quotes its Intralox part', () => {
+    const row = wearstripRow(ws({ use: 'Carryway', profileId: 'clip-on', quoteAs: 'clipOn', rails: 2, lengthsIn: [240] }), 'in')
+    expect(row).toMatchObject({ partNumber: 'B6XX25IXXWMV', qty: 4, uom: '10 ft section' })
   })
 
   it('allows a sixteenth of tape error', () => {

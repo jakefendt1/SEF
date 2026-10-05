@@ -9,7 +9,7 @@
 import { jsPDF } from 'jspdf'
 import { INTRALOX_LOGO_PNG, INTRALOX_LOGO_SIZE } from '../assets/intralox-logo-pdf'
 import type { OnetrackJob, ResolvedRow } from './onetrack/bom'
-import { getFamily, getProfile, DIM_LABELS } from './onetrack/profiles'
+import { dimLabel, getFamily, getProfile } from './onetrack/profiles'
 import { formatDim, formatRun, formatTotal, railLengths, type WearstripWorksheet } from './onetrack/wearstrip'
 import type { Unit } from './measurement'
 
@@ -259,7 +259,7 @@ export function buildOnetrackPdf(args: OnetrackPdfArgs): { pdf: jsPDF; fileName:
       ws.quoteAs === 'match'
         ? 'Match the installed profile (CS to source)'
         : ws.quoteAs
-          ? `${getFamily(ws.quoteAs).label}${ws.color ? `, ${ws.color.toLowerCase()}` : ''}${ws.frameIn ? `, ${ws.frameIn} in frame` : ''}`
+          ? `${getFamily(ws.quoteAs).label}${ws.frameIn ? `, ${ws.frameIn} in frame` : ''}${ws.material && ws.material !== 'UHMW-PE' ? `, ${ws.material.toLowerCase()}` : ''}${ws.color ? `, ${ws.color.toLowerCase()}` : ''}`
           : '—'
     const lengths = railLengths(ws)
     const kv: [string, string][] = [
@@ -268,7 +268,7 @@ export function buildOnetrackPdf(args: OnetrackPdfArgs): { pdf: jsPDF; fileName:
     ]
     for (const k of profile?.dims ?? []) {
       const v = ws.dims[k]
-      if (typeof v === 'number') kv.push([`${DIM_LABELS[k]} (${k})`, `${formatDim(v, unit)} ${unit}`])
+      if (typeof v === 'number') kv.push([`${dimLabel(profile, k)} (${k})`, `${formatDim(v, unit)} ${unit}`])
     }
     if (lengths) {
       kv.push(['Rails', String(lengths.length)])

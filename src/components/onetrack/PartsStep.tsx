@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { getItem, itemsIn, type CatalogItem, type CategoryId } from '@/lib/onetrack/catalog'
+import { getItem, itemsIn, refLabel, type CatalogItem, type CategoryId } from '@/lib/onetrack/catalog'
 import { CATEGORIES, getCategory, type CategoryDef } from '@/lib/onetrack/categories'
 import { chipOptions, filterItems, seriesLabel, normalizeSeries } from '@/lib/onetrack/filter'
 import type { BomLine } from '@/lib/onetrack/bom'
@@ -72,7 +72,7 @@ function CategoryTile({ c, inBom, onOpen }: { c: CategoryDef; inBom: number; onO
       )}
       <span className="block mt-2 text-base font-semibold leading-tight">{c.label}</span>
       <span className="block text-sm text-muted-foreground mt-0.5">
-        {c.id === 'wearstrip' ? 'Measure and quote' : `${count} part${count === 1 ? '' : 's'}`} · menu p. {c.pages}
+        {c.id === 'wearstrip' ? 'Measure and quote' : `${count} part${count === 1 ? '' : 's'}`} · {c.pages}
       </span>
     </button>
   )
@@ -196,7 +196,7 @@ function ItemCard({ item, onAdd }: { item: CatalogItem; onAdd: (qty: number) => 
           <span className={cn('font-mono-num', !quoteOnly && 'font-semibold text-foreground')}>
             {item.partNumber ?? (shaft ? 'No part number: CS quotes it from the spec sheet' : 'No part number: CS quotes it')}
           </span>{' '}
-          · {item.uom} · menu p. {item.page}
+          · {item.uom} · {refLabel(item)}
         </p>
       </div>
       <div className="flex items-center gap-2">

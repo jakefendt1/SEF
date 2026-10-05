@@ -1,6 +1,8 @@
 // The OneTrack menu (Intralox "OneTrack Tools and Components", 5018341),
-// transcribed from Onetrack/data/onetrack-catalog.json. Part numbers are
-// verbatim; `page` is the printed page number in the menu.
+// transcribed from Onetrack/data/onetrack-catalog.json, plus the wearstrip
+// pages of the 2026 Engineering Manual, Modular Plastic Belts, pp. 470-475
+// (Onetrack/full wearstrip catagog.pdf). Part numbers are verbatim; `page` is
+// the printed page number, in the menu unless `source` says 'manual'.
 //
 // Raw rows only. `../catalog.ts` turns them into the one CatalogItem shape the
 // app uses. Change a part number here and nowhere else.
@@ -11,26 +13,48 @@ export type WearstripFamily =
   | 'radiusCenterRail'
   | 'radiusAngled'
   | 'radiusSnapOn'
+  // Engineering manual p.472: the Word worksheet's clip-on and snap-on profiles.
+  | 'standardAngle'
+  | 'clipOn'
+  | 'clipOnLeg'
+  | 'guideRailSnapOn'
+  | 'barbedClipOn'
+  | 'barbedClipOnLeg'
+  | 'standardBarSnapOn'
+  | 'fullRoundSnapOn'
+  // p.473
+  | 'ssBackedT'
+  | 'ssBackedL'
+  // pp.474-475
+  | 'radiusStandardEdge'
+  | 'radiusTabbedEdge'
+  | 's2400HoldDown'
 
 export type FrameSize = '1/8' | '3/16' | '1/4' | '3/8'
+export type WearstripMaterial = 'UHMW-PE' | 'Oil-filled UHMW-PE'
+export type Source = 'menu' | 'manual'
 
 export interface RawWearstrip {
   id: string
   family: WearstripFamily
   description: string
-  color: 'Natural' | 'Blue'
+  color: 'Natural' | 'Blue' | 'Grey'
+  /** Absent = UHMW-PE. Oil-filled is the self-lubricating grey grade. */
+  material?: WearstripMaterial
   lengthFt: number
   uom: string
   dims?: { widthIn: number; heightIn: number; flangeWidthIn?: number; flangeHeightIn?: number }
   frameIn?: FrameSize
   partNumber: string
   page: number
+  source?: Source
 }
 
 export interface RawDescribed {
   description: string
   partNumber: string
   page: number
+  source?: Source
 }
 
 export interface RawPuller extends RawDescribed {
@@ -92,6 +116,7 @@ export interface RawQuoteOnly {
   /** What CS needs from the rep, shown as the prompt for the line's note. */
   prompt: string
   page: number
+  source?: Source
 }
 
 
@@ -107,6 +132,38 @@ export const WEARSTRIPS: readonly RawWearstrip[] = [
   { id: 'ot-snapon-3-16', family: 'radiusSnapOn', description: 'OneTrack radius snap-on wearstrip, 3/16 in frame, natural', color: 'Natural', lengthFt: 500, uom: '500 ft length', frameIn: '3/16', partNumber: 'B6XX51IXXZMV-00', page: 17 },
   { id: 'ot-snapon-3-8', family: 'radiusSnapOn', description: 'OneTrack radius snap-on wearstrip, 3/8 in frame, natural', color: 'Natural', lengthFt: 500, uom: '500 ft length', frameIn: '3/8', partNumber: 'B6XX52IXXZMV-00', page: 17 },
   { id: 'ot-snapon-1-4', family: 'radiusSnapOn', description: 'OneTrack radius snap-on wearstrip, 1/4 in frame, natural', color: 'Natural', lengthFt: 500, uom: '500 ft length', frameIn: '1/4', partNumber: 'B6XX53IXXZMV-00', page: 17 },
+
+  // ---- Engineering manual, pp.472-475 -----------------------------------
+  // Clip-on and angle styles are sold in 120 in lengths (p.471). The manual
+  // prints these eight part numbers without a -00 suffix; kept as printed.
+  { id: 'mf-standard-angle', family: 'standardAngle', description: 'Standard angle UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX21IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-clip-on', family: 'clipOn', description: 'Clip-on UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX25IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-clip-on-leg', family: 'clipOnLeg', description: 'Clip-on with leg UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX26IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-guide-rail-snap-on', family: 'guideRailSnapOn', description: 'Guide rail snap-on UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX27IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-barbed-clip-on', family: 'barbedClipOn', description: 'Barbed clip-on UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX23IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-barbed-clip-on-leg', family: 'barbedClipOnLeg', description: 'Barbed clip-on with leg UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX24IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-standard-bar-snap-on', family: 'standardBarSnapOn', description: 'Standard bar snap-on UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX28IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-full-round-snap-on', family: 'fullRoundSnapOn', description: 'Full round snap-on UHMW-PE wearstrip, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX29IXXWMV', page: 472, source: 'manual' },
+  { id: 'mf-ss-backed-t', family: 'ssBackedT', description: 'Stainless steel-backed T clip-on UHMW-PE wearstrip (flat), 120 in', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX42IXXWMV-00', page: 473, source: 'manual' },
+  { id: 'mf-ss-backed-l', family: 'ssBackedL', description: 'Stainless steel-backed L clip-on with leg UHMW-PE wearstrip (flanged), 120 in', color: 'Natural', lengthFt: 10, uom: '10 ft section', partNumber: 'B6XX43IXXWMV-00', page: 473, source: 'manual' },
+  // Radius belt wearstrips. The manual gives no length for these; 10 ft is
+  // assumed to match the OneTrack radius hold-downs above. Confirm with CS.
+  { id: 'mf-radius-standardedge-1-8', family: 'radiusStandardEdge', description: 'Radius standard edge hold-down wearstrip, 1/8 in frame, UHMW-PE, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6XX33IXXWMV-00', page: 474, source: 'manual' },
+  { id: 'mf-radius-standardedge-3-16', family: 'radiusStandardEdge', description: 'Radius standard edge hold-down wearstrip, 3/16 in frame, UHMW-PE, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6XX32IXXWMV-00', page: 474, source: 'manual' },
+  { id: 'mf-radius-standardedge-1-8-oil', family: 'radiusStandardEdge', description: 'Radius standard edge hold-down wearstrip, 1/8 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6XX33IXXWMW-00', page: 474, source: 'manual' },
+  { id: 'mf-radius-standardedge-3-16-oil', family: 'radiusStandardEdge', description: 'Radius standard edge hold-down wearstrip, 3/16 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6XX32IXXWMW-00', page: 474, source: 'manual' },
+  { id: 'mf-radius-tabbededge-1-8', family: 'radiusTabbedEdge', description: 'Radius tabbed edge hold-down wearstrip, 1/8 in frame, UHMW-PE, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6XX39IXXWMV-20', page: 474, source: 'manual' },
+  { id: 'mf-radius-tabbededge-3-16', family: 'radiusTabbedEdge', description: 'Radius tabbed edge hold-down wearstrip, 3/16 in frame, UHMW-PE, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6XX38IXXWMV-10', page: 474, source: 'manual' },
+  { id: 'mf-radius-tabbededge-1-8-oil', family: 'radiusTabbedEdge', description: 'Radius tabbed edge hold-down wearstrip, 1/8 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6XX39IXXWMW-00', page: 474, source: 'manual' },
+  { id: 'mf-radius-tabbededge-3-16-oil', family: 'radiusTabbedEdge', description: 'Radius tabbed edge hold-down wearstrip, 3/16 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6XX38IXXWMW-00', page: 474, source: 'manual' },
+  // The natural UHMW-PE angled and center rail parts are the menu's rows above
+  // (same part numbers on manual pp.474-475); only the oil-filled ones are new.
+  { id: 'mf-radiusangled-1-8-oil', family: 'radiusAngled', description: 'OneTrack radius angled hold-down wearstrip, 1/8 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6XX37IXXWMW-00', page: 474, source: 'manual' },
+  { id: 'mf-radiusangled-3-16-oil', family: 'radiusAngled', description: 'OneTrack radius angled hold-down wearstrip, 3/16 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6XX36IXXWMW-00', page: 474, source: 'manual' },
+  { id: 'mf-radiuscenterrail-1-8-oil', family: 'radiusCenterRail', description: 'OneTrack radius center rail hold-down wearstrip, 1/8 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6XX41IXXWMW-00', page: 475, source: 'manual' },
+  { id: 'mf-radiuscenterrail-3-16-oil', family: 'radiusCenterRail', description: 'OneTrack radius center rail hold-down wearstrip, 3/16 in frame, oil-filled UHMW-PE, grey', color: 'Grey', material: 'Oil-filled UHMW-PE', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6XX40IXXWMW-00', page: 475, source: 'manual' },
+  { id: 'mf-s2400-1-8', family: 's2400HoldDown', description: 'Series 2400 hold-down guide wearstrip, 1/8 in frame, UHMW-PE, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', frameIn: '1/8', partNumber: 'B6F546IXXWMV-00', page: 475, source: 'manual' },
+  { id: 'mf-s2400-3-16', family: 's2400HoldDown', description: 'Series 2400 hold-down guide wearstrip, 3/16 in frame, UHMW-PE, natural', color: 'Natural', lengthFt: 10, uom: '10 ft section', frameIn: '3/16', partNumber: 'B6F547IXXWMV-00', page: 475, source: 'manual' },
 ]
 
 export const BELT_PULLERS: readonly RawPuller[] = [
@@ -228,8 +285,14 @@ export const SCRAPERS: readonly RawDescribed[] = [
 ]
 
 /** No part number: CS quotes these from what the rep writes in the line note. */
+/** Engineering manual p.473: sold separately for the stainless steel-backed wearstrips. */
+export const WEARSTRIP_ACCESSORIES: readonly RawDescribed[] = [
+  { description: 'Stainless steel self-tightening wearstrip clip and nut, 5/16-18 UNC (for stainless steel-backed wearstrip)', partNumber: 'C9AX1XXXXXXX-01', page: 473, source: 'manual' },
+]
+
 export const QUOTE_ONLY: readonly RawQuoteOnly[] = [
   { id: 'quote-cleanlock-shaft', description: 'CleanLock stainless steel square shaft (1.5 in / 40 mm: S800, 1600, 1800, 2400, 8050; 2.5 in / 60 mm: S1800)', note: 'Machined to spec. No part number: CS quotes from dimensions.', prompt: 'Shaft size (1.5 in / 40 mm or 2.5 in / 60 mm), length, and journal details', page: 10 },
   { id: 'quote-ss-shaft', description: 'Stainless steel square shaft, machined to customer spec (1.0, 1.5/40 mm, 2.5/60 mm, 3.5 in)', note: 'No part number: CS quotes from dimensions.', prompt: 'Shaft size, length, and journal details', page: 10 },
   { id: 'quote-cip', description: 'Intralox EZ Clean-in-Place (CIP) system', note: 'Custom made to order. Contact TSG.', prompt: 'Conveyor and belt details for TSG', page: 21 },
+  { id: 'quote-uhmw-tape', description: 'UHMW-PE pressure sensitive wearstrip tape, 54 ft roll', note: 'Light-duty and temporary use only. No part number in the manual.', prompt: 'Width (1 or 2 in), thickness (0.010 or 0.030 in), and how many rolls', page: 473, source: 'manual' },
 ]

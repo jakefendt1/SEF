@@ -5,8 +5,17 @@
 // Rounding rule (Jake, 2026-10-05): round up per rail. Each rail gets whole
 // stock lengths of its own -- no sharing offcuts between rails, no spare %.
 
-import { findWearstrip, type FrameSize, type WearstripItem } from './catalog'
-import { DIM_LABELS, getFamily, getProfile, type DimKey, type QuoteAs } from './profiles'
+import { findWearstrip, type FrameSize, type WearstripItem, type WearstripMaterial } from './catalog'
+import {
+  DIM_LABELS,
+  colorsFor,
+  framesFor,
+  getFamily,
+  getProfile,
+  materialsFor,
+  type DimKey,
+  type QuoteAs,
+} from './profiles'
 import { toFractionalInches, type Unit } from '../measurement'
 
 export const WEARSTRIP_USES = ['Carryway', 'Returnway', 'Side guide', 'Hold-down'] as const
@@ -21,8 +30,10 @@ export interface WearstripWorksheet {
   /** Only for the "Other" profile: what it looks like, in the rep's words. */
   otherDescription: string
   quoteAs: QuoteAs | null
-  color: 'Natural' | 'Blue' | null
+  color: 'Natural' | 'Blue' | 'Grey' | null
   frameIn: FrameSize | null
+  /** Natural UHMW-PE or the oil-filled grade, where the family offers both. */
+  material: WearstripMaterial | null
   /** Measured profile dimensions, inches. Absent / null = not measured. */
   dims: Partial<Record<DimKey, number | null>>
   rails: number | null
@@ -39,6 +50,7 @@ export function emptyWorksheet(): WearstripWorksheet {
     quoteAs: null,
     color: null,
     frameIn: null,
+    material: null,
     dims: {},
     rails: null,
     sameLength: true,
@@ -71,7 +83,7 @@ export function railLengths(ws: WearstripWorksheet): number[] | null {
 /** The catalog part this worksheet quotes, or null for "match" / not chosen yet. */
 export function wearstripItemFor(ws: WearstripWorksheet): WearstripItem | null {
   if (!ws.quoteAs || ws.quoteAs === 'match') return null
-  return findWearstrip(ws.quoteAs, { color: ws.color, frameIn: ws.frameIn })
+  return findWearstrip(ws.quoteAs, { color: ws.color, frameIn: ws.frameIn, material: ws.material })
 }
 
 /** What's still missing, as field labels the Review screen can list. */
@@ -83,9 +95,10 @@ export function missingForWearstrip(ws: WearstripWorksheet): string[] {
   if (profile?.id === 'other' && !ws.otherDescription.trim()) missing.push('Describe the profile')
   if (!ws.quoteAs) missing.push('What to quote')
   else if (ws.quoteAs !== 'match') {
-    const option = getFamily(ws.quoteAs).option
-    if (option === 'color' && !ws.color) missing.push('Color')
-    if (option === 'frame' && !ws.frameIn) missing.push('Frame thickness')
+    // Ask only for the choices this family actually has more than one of.
+    if (framesFor(ws.quoteAs).length > 0 && !ws.frameIn) missing.push('Frame thickness')
+    if (materialsFor(ws.quoteAs).length > 1 && !ws.material) missing.push('Material')
+    if (colorsFor(ws.quoteAs, ws.material).length > 1 && !ws.color) missing.push('Color')
   }
   if (!ws.rails || !Number.isInteger(ws.rails) || ws.rails < 1) {
     missing.push('Number of rails')
@@ -219,9 +232,11 @@ export function wearstripWarnings(ws: WearstripWorksheet, unit: Unit): string[] 
 
   if (item?.dims) {
     const label = getFamily(item.family).label
+    // Flanged: W is overall (1.0 in wear surface + 0.25 in flange = 1.25 in)
+    // and H is to the wear surface, per the drawing in the menu and manual.
     const checks: [DimKey, number, string][] = [
-      ['W', item.dims.widthIn, 'wide'],
-      ['H', item.dims.heightIn, 'high'],
+      ['W', item.dims.widthIn + (item.dims.flangeWidthIn ?? 0), 'wide'],
+      ['H', item.dims.heightIn, item.dims.flangeWidthIn ? 'to the wear surface' : 'high'],
     ]
     for (const [k, catalogIn, word] of checks) {
       const measured = ws.dims[k]

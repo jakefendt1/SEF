@@ -189,6 +189,19 @@ to the machine shop. Shaft dimensions print to four decimals, never rounded to
 a fraction -- a 3/16 keyway is 0.1875. Chamfer starts at Yes because the paper
 form does.
 
+**The catalog is the menu plus the manual's wearstrip pages.** `data/menu.ts`
+also carries the 2026 Engineering Manual pp.470-475 (`../Onetrack/full
+wearstrip catagog.pdf`), marked `source: 'manual'` so pages cite "Eng. manual
+p. 472" rather than a menu page. The four radius part numbers both books list
+appear once. The manual prints the eight clip-on / angle numbers without a -00
+suffix; they stay as printed until CS says otherwise. The manual gives no
+length for the standard edge, tabbed edge and S2400 hold-downs: 10 ft is
+assumed, like the menu's radius parts.
+
+**OneTrack flanged is an L.** 1.25 in overall (a 1.0 in wear surface plus a
+0.25 in flange), 1.5 in to the wear surface, flange 0.5 in above it. The size
+check compares W with 1.25 and H with 1.5.
+
 **Part pictures are crops of the menu** (`public/onetrack/menu/`), so a rep
 can match what's on screen to the page the customer is holding. Swap a file
 for better artwork without renaming it.

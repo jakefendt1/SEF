@@ -41,7 +41,7 @@ function Dim({ x1, y1, x2, y2, label, dx = 0, dy = 0 }: { x1: number; y1: number
 }
 
 export function ProfileDiagram({ group }: { group: ProfileGroup }) {
-  if (group === 'radius') return null
+  if (group === 'radius' || group === 'fixed') return null
   return (
     <svg viewBox="0 0 260 180" className="w-full max-w-sm h-auto" role="img" aria-label="Cross-section with the dimensions to measure">
       {group === 'flat' && (
@@ -53,9 +53,17 @@ export function ProfileDiagram({ group }: { group: ProfileGroup }) {
       )}
       {group === 'flanged' && (
         <>
-          <path d="M95 40 H165 V140 H95 V115 H75 V100 H95 Z" className={STRIP} strokeWidth={2} />
-          <Dim x1={95} y1={25} x2={165} y2={25} label="W" dy={-9} />
-          <Dim x1={185} y1={40} x2={185} y2={140} label="H" dx={14} />
+          {/* Wear surface on the left, flange standing up on the right. */}
+          <path d="M80 70 H158 V30 H178 V150 H80 Z" className={STRIP} strokeWidth={2} />
+          <text x={119} y={64} className="fill-gray-500 text-[11px]" textAnchor="middle">
+            wear surface
+          </text>
+          <text x={186} y={44} className="fill-gray-500 text-[11px]">
+            flange
+          </text>
+          <Dim x1={80} y1={163} x2={178} y2={163} label="W" dy={11} />
+          <Dim x1={60} y1={70} x2={60} y2={150} label="H" dx={-12} />
+          <line x1={56} y1={70} x2={80} y2={70} className="stroke-gray-300" strokeDasharray="3 3" />
         </>
       )}
       {group === 'angle' && (

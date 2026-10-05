@@ -7,6 +7,7 @@
 import { emptyJob, resolveBom, type BomLine, type OnetrackJob } from './onetrack/bom'
 import { emptyWorksheet } from './onetrack/wearstrip'
 import { emptyDrawing, emptyShaftSpec } from './onetrack/shaft'
+import { materialsFor } from './onetrack/profiles'
 import { ONETRACK_VERSION } from './onetrack/version'
 import type { Unit } from './measurement'
 
@@ -80,7 +81,13 @@ export function fromRecord(r: Partial<StoredOnetrackBom>): {
   const job = { ...emptyJob('', ''), ...(r.job ?? {}) }
   const lines = (r.lines ?? []).map((l): BomLine => {
     if (l.kind === 'wearstrip') {
-      return { ...l, worksheet: { ...emptyWorksheet(), ...l.worksheet, dims: { ...l.worksheet?.dims } } }
+      const ws = { ...emptyWorksheet(), ...l.worksheet, dims: { ...l.worksheet?.dims } }
+      // Before oil-filled parts were added (v1.1.0) every radius part was
+      // natural UHMW-PE, so an older line with no material meant that.
+      if (!ws.material && ws.quoteAs && ws.quoteAs !== 'match' && materialsFor(ws.quoteAs).length > 1) {
+        ws.material = 'UHMW-PE'
+      }
+      return { ...l, worksheet: ws }
     }
     if (l.kind === 'shaft') {
       const base = emptyShaftSpec()

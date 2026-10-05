@@ -36,7 +36,7 @@ export interface CategoryDef {
   filters: readonly FilterDef[]
   /** Start the list filtered to the job's belt series. */
   bySeries: boolean
-  /** Printed pages in the OneTrack menu. */
+  /** Where to find it: "menu p. 9", "Eng. manual p. 473". */
   pages: string
 }
 
@@ -49,7 +49,17 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: Rows3,
     filters: [],
     bySeries: false,
-    pages: '15–17',
+    pages: 'menu p. 15–17 · Eng. manual p. 470–475',
+  },
+  {
+    id: 'wearstripAccessories',
+    label: 'Wearstrip clips',
+    helper: 'Clip and nut for stainless steel-backed wearstrip, sold separately.',
+    image: '/onetrack/manual/ss-clip-nut.png',
+    icon: Puzzle,
+    filters: [],
+    bySeries: false,
+    pages: 'Eng. manual p. 473',
   },
   {
     id: 'beltPullers',
@@ -59,7 +69,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: Grip,
     filters: [],
     bySeries: true,
-    pages: '6',
+    pages: 'menu p. 6',
   },
   {
     id: 'rodRemovers',
@@ -69,7 +79,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: Wrench,
     filters: [],
     bySeries: false,
-    pages: '7',
+    pages: 'menu p. 7',
   },
   {
     id: 'rulers',
@@ -79,7 +89,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: Ruler,
     filters: [],
     bySeries: false,
-    pages: '8',
+    pages: 'menu p. 8',
   },
   {
     id: 'cleanLockSprockets',
@@ -92,7 +102,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
       { key: 'bore', label: 'Bore' },
     ],
     bySeries: true,
-    pages: '9',
+    pages: 'menu p. 9',
   },
   {
     id: 'cleanLockRollers',
@@ -105,7 +115,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
       { key: 'shaft', label: 'Square shaft' },
     ],
     bySeries: false,
-    pages: '11',
+    pages: 'menu p. 11',
   },
   {
     id: 'cleanLockAccessories',
@@ -115,7 +125,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: Puzzle,
     filters: [],
     bySeries: false,
-    pages: '12',
+    pages: 'menu p. 12',
   },
   {
     id: 'straightRollers',
@@ -130,7 +140,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
       { key: 'color', label: 'Color' },
     ],
     bySeries: false,
-    pages: '13',
+    pages: 'menu p. 13',
   },
   {
     id: 'flangedRollers',
@@ -144,7 +154,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
       { key: 'color', label: 'Color' },
     ],
     bySeries: false,
-    pages: '14',
+    pages: 'menu p. 14',
   },
   {
     id: 'retainerRings',
@@ -158,7 +168,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
       { key: 'type', label: 'Type' },
     ],
     bySeries: false,
-    pages: '18',
+    pages: 'menu p. 18',
   },
   {
     id: 'sprocketSpacers',
@@ -171,7 +181,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
       { key: 'material', label: 'Material' },
     ],
     bySeries: false,
-    pages: '19',
+    pages: 'menu p. 19',
   },
   {
     id: 'scrapers',
@@ -181,7 +191,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: Eraser,
     filters: [],
     bySeries: false,
-    pages: '20',
+    pages: 'menu p. 20',
   },
   {
     id: 'quoteOnly',
@@ -191,7 +201,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     icon: FileQuestion,
     filters: [],
     bySeries: false,
-    pages: '10, 21',
+    pages: 'menu p. 10, 21 · Eng. manual p. 473',
   },
 ]
 
