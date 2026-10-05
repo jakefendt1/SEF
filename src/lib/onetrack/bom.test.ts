@@ -210,6 +210,7 @@ describe('filterItems', () => {
   it('chip options come from the items, in catalog order', () => {
     expect(chipOptions(itemsIn('retainerRings'), 'shaft')).toEqual(['Round', 'Square'])
     expect(chipOptions(sprockets, 'bore')).toEqual(['1.5 in', '40 mm', '2.5 in', '60 mm'])
+    expect(chipOptions(sprockets, 'teeth')).toEqual(['8', '10', '12', '13', '16', '20'])
   })
 })
 

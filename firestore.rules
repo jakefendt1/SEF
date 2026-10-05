@@ -41,6 +41,10 @@ service cloud.firestore {
       match /tdBulkDensityRuns/{runId} {
         allow read, write: if isOwner(uid);
       }
+
+      match /onetrackBoms/{bomId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     match /{document=**} {

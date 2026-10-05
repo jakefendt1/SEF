@@ -60,14 +60,18 @@ export function filterItems(
   }
 }
 
-/** The distinct values of one attribute, in catalog order, for a chip row. */
+/**
+ * The distinct values of one attribute for a chip row: smallest first when
+ * they're plain numbers (tooth counts), otherwise in catalog order (which
+ * keeps "1.5 in" next to its "40 mm" twin).
+ */
 export function chipOptions(items: readonly CatalogItem[], key: string): string[] {
   const seen: string[] = []
   for (const i of items) {
     const v = i.attrs[key]
     if (v !== undefined && !seen.includes(v)) seen.push(v)
   }
-  return seen
+  return seen.every((v) => /^\d+$/.test(v)) ? seen.sort((a, b) => Number(a) - Number(b)) : seen
 }
 
 /**

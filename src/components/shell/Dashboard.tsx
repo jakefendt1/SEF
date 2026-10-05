@@ -1,5 +1,6 @@
 import { useAuthStore } from '../../store/authStore'
 import { TOOLS } from '../../lib/navigation'
+import { canSeeTool, isBeta } from '../../lib/betaAccess'
 import { ToolCard } from './ToolCard'
 import { RecentActivity } from './RecentActivity'
 
@@ -10,6 +11,7 @@ function firstName(displayName: string | undefined): string {
 
 export function Dashboard() {
   const profile = useAuthStore((s) => s.profile)
+  const email = useAuthStore((s) => s.user?.email ?? null)
   const name = firstName(profile?.displayName)
 
   return (
@@ -20,13 +22,14 @@ export function Dashboard() {
       <p className="text-base text-gray-600 mb-6">Pick a tool to get started.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {TOOLS.map((tool) => (
+        {TOOLS.filter((tool) => canSeeTool(tool.id, email)).map((tool) => (
           <ToolCard
             key={tool.id}
             title={tool.title}
             description={tool.description}
             icon={tool.icon}
             href={tool.href}
+            beta={isBeta(tool.id)}
           />
         ))}
       </div>

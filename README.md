@@ -14,6 +14,10 @@ account manager uses on site:
   incline carries per flight, the belt speed a line needs, and what sidewalls
   or guards add, with a 3D view of the pocket. Replaces CalcLab's Bulk Density
   Calculator. Runs can be saved and exported as a customer or internal PDF.
+- **OneTrack BOM Builder** (beta) — pick OneTrack parts on the plant floor,
+  measure wearstrip with a guided worksheet, and send CS a part-numbered BOM
+  as a PDF or pasted into an email. Visible only to the people in
+  `lib/betaAccess.ts` until launch.
 
 The tools sit behind one login, so a user's work follows them between devices.
 
@@ -90,6 +94,11 @@ describing the same thing, drifting apart.
 | Elongation thresholds *and the wording that goes with them* | `lib/beltElongation.ts` → `verdictFor` | `beltElongation.test.ts`; the gauge, the pill and the big number all style from `belt-elongation/levelStyles.ts` |
 | Bulk density manual tables (flights, sidewalls, indents) | `lib/tdBulkDensity/data/` | `engine.test.ts`; the dropdowns and the rule checks both read `rules.ts` → `availableOptions` |
 | Bulk density illustration colours | `components/td-bulk-density/palette.ts` | Every view, the legend and the charts read it |
+| OneTrack part numbers, descriptions, units | `lib/onetrack/data/menu.ts` (raw, from `../Onetrack/data/onetrack-catalog.json`) → `lib/onetrack/catalog.ts` | `catalog.test.ts`: 95 part numbers, all well-formed and unique |
+| OneTrack categories and filter chips | `lib/onetrack/categories.ts` | `catalog.test.ts` asserts every chip key exists on every item |
+| Wearstrip profiles and "quote as" options | `lib/onetrack/profiles.ts` (colors and frame sizes come from the catalog) | `catalog.test.ts` checks every picture exists under `public/` |
+| What's on a OneTrack BOM, in what order | `lib/onetrack/bom.ts` → `resolveBom` | The panel, Review, PDF and email text all call it |
+| Which tools are in beta, and for whom | `lib/betaAccess.ts` | `betaAccess.test.ts` |
 | Brand colour | `--brand` in `index.css` | No `blue-900`/`#1e3a5f` literals in components |
 | Stacking order | `--z-app-header` / `--z-page-sticky` / `--z-overlay` | No ad-hoc `z-40` |
 
@@ -135,6 +144,12 @@ progress; anything they genuinely cannot measure gets marked
 - `users/{uid}/tdBulkDensityRuns/{id}` — see `StoredTdRun` in
   `lib/tdBulkDensityRecord.ts`: all inputs (canonical units), the units they
   were typed in, the engine version and a results snapshot
+
+- `users/{uid}/onetrackBoms/{id}` — see `StoredOnetrackBom` in
+  `lib/onetrackRecord.ts`: the job, the lines as chosen (item ids and
+  quantities, or the wearstrip worksheet in canonical inches), and a snapshot
+  of the part numbers and quantities they produced. Photos are **not** in it:
+  they stay in the device's IndexedDB (`lib/onetrack/photos.ts`)
 
 The Belt Elongation Check has no collection: it computes and discards.
 

@@ -152,6 +152,41 @@ says if the answer changed; it never writes.
 - Hold-down width default (1.0 in) and the customer PDF content are open items
   owned by Jake (plan §12).
 
+## OneTrack BOM Builder
+
+Built from `../Onetrack/CURSOR_BUILD_PLAN.md` (the spec). Its §8 tests are the
+contract and live in `lib/onetrack/*.test.ts`.
+
+**It's in beta.** `lib/betaAccess.ts` lists who can see it (Jake and Jeremy
+Shall). Everyone else gets no dashboard card and "not found" at `/onetrack`.
+Launching = deleting the `onetrack` entry and pushing. Don't remove the gate
+for anyone else's convenience before Jeremy signs off.
+
+**Part numbers are trusted as printed** in the OneTrack menu (Jake,
+2026-10-05) -- including the p.11 CleanLock roller E7/L6 codes, which pair the
+other way round from the sprockets and spacers. Change a part number in
+`lib/onetrack/data/menu.ts` and nowhere else, and bump `version.ts`.
+
+**Wearstrip rounds up per rail.** No offcuts shared between rails, no spare %
+(Jake, 2026-10-05). Snap-on is sold only in 500 ft lengths; rings and spacers
+singly.
+
+**Photos stay on the device.** A Firestore document caps at 1 MB and one
+phone photo is bigger. They live in IndexedDB keyed by BOM id, go into the PDF,
+and the Photos step says plainly that they don't sync. If you ever sync them,
+use Storage with a real failure path -- not the record.
+
+**No CS address, no `mailto:`.** Reps send to their own CS contact, and
+`mailto:` can't attach the PDF, which is the one thing CS needs. Share PDF uses
+the share sheet where `navigator.canShare({files})` allows it.
+
+**Copy for email never claims a copy it didn't make.** If the clipboard is
+refused, the text is shown to copy by hand.
+
+**pdfSafe builds its character class from code points.** Some tooling turns
+backslash-u escape sequences into literal characters on write, which lint then
+rejects as irregular whitespace. Check the file after editing that regex.
+
 ## Open questions — do not encode as fact
 
 - **Quick-mode scope.** `schema/conditionals.ts` notes that Quick mode covering

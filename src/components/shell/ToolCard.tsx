@@ -8,9 +8,11 @@ interface ToolCardProps {
   description: string
   icon: LucideIcon
   href: string
+  /** Shown only to the beta list; says so, so nobody mistakes it for launched. */
+  beta?: boolean
 }
 
-export function ToolCard({ title, description, icon: Icon, href }: ToolCardProps) {
+export function ToolCard({ title, description, icon: Icon, href, beta }: ToolCardProps) {
   return (
     <Link href={href} className="block">
       <Card className="h-full transition-shadow hover:shadow-md hover:border-primary/40 active:bg-accent">
@@ -20,6 +22,11 @@ export function ToolCard({ title, description, icon: Icon, href }: ToolCardProps
               <Icon className="size-6" aria-hidden="true" />
             </div>
             <CardTitle className="text-lg">{title}</CardTitle>
+            {beta && (
+              <span className="ml-auto shrink-0 rounded-full bg-warning-orange/15 text-warning-orange text-sm font-semibold px-2.5 py-0.5">
+                Beta
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent>

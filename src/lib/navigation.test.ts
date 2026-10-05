@@ -51,6 +51,17 @@ describe('resolveNav', () => {
     expect(resolveNav('/td-bulk-density/abc').backHref).toBe('/')
   })
 
+  it('N1: sends the OneTrack BOM Builder and a saved BOM back to the dashboard', () => {
+    expect(resolveNav('/onetrack')).toEqual({
+      title: 'OneTrack BOM Builder',
+      backHref: '/',
+      backLabel: 'Tools',
+    })
+    expect(resolveNav('/onetrack/abc').title).toBe('Saved BOM')
+    expect(resolveNav('/onetrack/abc').backHref).toBe('/')
+    expect(Object.values(ROUTES)).toContain('/onetrack/:id')
+  })
+
   it('still offers a way home from an unknown route', () => {
     expect(resolveNav('/nope/nothing-here').backHref).toBe('/')
   })

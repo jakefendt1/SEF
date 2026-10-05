@@ -3,7 +3,7 @@
 // read from here so a route can't be renamed in one place and go stale in
 // another.
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardList, Calculator, Layers, Ruler } from 'lucide-react'
+import { ClipboardList, Calculator, Layers, Package, Ruler } from 'lucide-react'
 import { getSectionBySlug } from '../schema/sectionMap'
 
 export const ROUTES = {
@@ -16,6 +16,9 @@ export const ROUTES = {
   tdBulkDensity: '/td-bulk-density',
   /** A saved run, reopened. */
   tdBulkDensityRun: '/td-bulk-density/:id',
+  onetrack: '/onetrack',
+  /** A saved BOM, reopened. */
+  onetrackBom: '/onetrack/:id',
 } as const
 
 export interface ToolDef {
@@ -63,6 +66,15 @@ export const TOOLS: ToolDef[] = [
       'How much a flighted ThermoDrive incline carries, and what sidewalls or guards add, for a bulk product.',
     href: ROUTES.tdBulkDensity,
     icon: Layers,
+  },
+  {
+    // In beta: only the emails in lib/betaAccess.ts see it.
+    id: 'onetrack',
+    title: 'OneTrack BOM Builder',
+    shortTitle: 'OneTrack BOM',
+    description: 'Pick OneTrack parts on the floor and send CS a part-numbered BOM to quote.',
+    href: ROUTES.onetrack,
+    icon: Package,
   },
 ]
 
@@ -144,6 +156,14 @@ export function resolveNav(path: string): NavContext {
 
   if (p.startsWith(`${ROUTES.tdBulkDensity}/`)) {
     return { title: 'Saved run', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
+  }
+
+  if (p === ROUTES.onetrack) {
+    return { title: 'OneTrack BOM Builder', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
+  }
+
+  if (p.startsWith(`${ROUTES.onetrack}/`)) {
+    return { title: 'Saved BOM', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
   }
 
   // Unknown route: still give the user a way home.
