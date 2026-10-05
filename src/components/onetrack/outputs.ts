@@ -38,7 +38,19 @@ async function imageFromUrl(url: string): Promise<PdfImage | undefined> {
     const img = new Image()
     img.src = data
     await img.decode()
-    return { data, w: img.naturalWidth, h: img.naturalHeight }
+    if (!blob.type.includes('svg')) return { data, w: img.naturalWidth, h: img.naturalHeight }
+    // jsPDF can't embed SVG: draw the profile render onto a white PNG first.
+    const w = 900
+    const h = Math.round((w * (img.naturalHeight || 3)) / (img.naturalWidth || 4))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return undefined
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.drawImage(img, 0, 0, w, h)
+    return { data: canvas.toDataURL('image/png'), w, h }
   } catch {
     return undefined
   }

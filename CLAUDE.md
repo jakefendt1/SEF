@@ -202,6 +202,15 @@ assumed, like the menu's radius parts.
 0.25 in flange), 1.5 in to the wear surface, flange 0.5 in above it. The size
 check compares W with 1.25 and H with 1.5.
 
+**Wearstrip profile tiles are generated.** `scripts/render-profiles.mjs`
+extrudes each cross-section (traced in inches from the manual / menu
+drawings) into the same isometric view, blue and light, and writes
+`public/onetrack/iso/<profile id>.svg`. Change a shape there and re-run
+`node scripts/render-profiles.mjs`; don't hand-edit the SVGs. They're for
+recognising a profile on a tile -- the dimensioned drawings under each "quote
+as" option are the reference. The PDF export rasterises them to PNG
+(`outputs.ts`), since jsPDF can't embed SVG.
+
 **Part pictures are crops of the menu** (`public/onetrack/menu/`), so a rep
 can match what's on screen to the page the customer is holding. Swap a file
 for better artwork without renaming it.

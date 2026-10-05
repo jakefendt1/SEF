@@ -5,7 +5,7 @@ import { FAMILIES, PROFILES, colorsFor, framesFor, materialsFor, quoteAsOptions,
 
 // Every file under public/onetrack, as "/onetrack/..." (the path the app uses).
 const PUBLIC_FILES = new Set(
-  Object.keys(import.meta.glob('/public/onetrack/**/*.{png,jpg}')).map((k) => k.replace(/^\/public/, '')),
+  Object.keys(import.meta.glob('/public/onetrack/**/*.{png,jpg,svg}')).map((k) => k.replace(/^\/public/, '')),
 )
 
 describe('catalog', () => {

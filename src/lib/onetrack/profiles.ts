@@ -1,9 +1,9 @@
 // Wearstrip profiles: the 12 from the Word worksheet, "Other", the radius
-// hold-downs, and the stainless steel-backed strips. Pictures come from the
-// documents the parts are sold from -- the engineering manual (pp.470-475)
-// or the OneTrack menu -- not the Word worksheet's renders, whose shapes
-// differ from what Intralox makes. Standard flat has no drawing in either,
-// so it keeps the worksheet's picture. The profile tile grid,
+// hold-downs, and the stainless steel-backed strips. Every tile is the same
+// isometric extrusion (scripts/render-profiles.mjs), traced from the
+// drawings the parts are sold from -- the engineering manual (pp.470-475) and
+// the OneTrack menu. The dimensioned drawings themselves show under each
+// "quote as" option (FAMILIES). The profile tile grid,
 // the dimension inputs, the PDF and the email text all read from here.
 //
 // The "quote as" options (wearstrip families) live here too, and take their
@@ -46,40 +46,41 @@ export function dimLabel(profile: WearstripProfile | undefined, k: DimKey): stri
 
 const FLAT: readonly DimKey[] = ['W', 'H']
 const CLIP: readonly DimKey[] = ['W', 'H', 'RW', 'RT', 'O']
-const p = (n: string) => `/onetrack/profiles/${n}.png`
 const m = (n: string) => `/onetrack/manual/${n}.png`
+/** The uniform isometric renders (scripts/render-profiles.mjs). */
+const iso = (id: string) => `/onetrack/iso/${id}.svg`
 
 export const PROFILES: readonly WearstripProfile[] = [
-  { id: 'standard-flat', label: 'Standard flat', image: p('01-standard-flat'), group: 'flat', family: null, dims: FLAT, row: 'standard' },
-  { id: 'finger-joint-flat', label: 'Finger-joint flat', image: m('finger-joint-flat'), group: 'flat', family: null, dims: FLAT, row: 'standard' },
-  { id: 'onetrack-flat', label: 'OneTrack flat', image: '/onetrack/parts/flat-render.png', group: 'flat', family: 'onetrackFlat', dims: FLAT, row: 'standard' },
+  { id: 'standard-flat', label: 'Standard flat', image: iso('standard-flat'), group: 'flat', family: null, dims: FLAT, row: 'standard' },
+  { id: 'finger-joint-flat', label: 'Finger-joint flat', image: iso('finger-joint-flat'), group: 'flat', family: null, dims: FLAT, row: 'standard' },
+  { id: 'onetrack-flat', label: 'OneTrack flat', image: iso('onetrack-flat'), group: 'flat', family: 'onetrackFlat', dims: FLAT, row: 'standard' },
   {
     id: 'onetrack-flanged',
     label: 'OneTrack flanged',
-    image: '/onetrack/parts/flanged-render.png',
+    image: iso('onetrack-flanged'),
     group: 'flanged',
     family: 'onetrackFlanged',
     dims: FLAT,
     dimLabels: { W: 'Overall width, flange included', H: 'Height to the wear surface (not the flange top)' },
     row: 'standard',
   },
-  { id: 'standard-angle', label: 'Standard angle', image: m('standard-angle'), group: 'angle', family: 'standardAngle', dims: FLAT, row: 'standard' },
-  { id: 'clip-on', label: 'Clip-on', image: m('clip-on'), group: 'clip', family: 'clipOn', dims: CLIP, row: 'standard' },
-  { id: 'clip-on-with-leg', label: 'Clip-on with leg', image: m('clip-on-with-leg'), group: 'clip', family: 'clipOnLeg', dims: CLIP, row: 'standard' },
-  { id: 'guide-rail-snap-on', label: 'Guide rail snap-on', image: m('guide-rail-snap-on'), group: 'clip', family: 'guideRailSnapOn', dims: CLIP, row: 'standard' },
-  { id: 'barbed-clip-on', label: 'Barbed clip-on', image: m('barbed-clip-on'), group: 'clip', family: 'barbedClipOn', dims: CLIP, row: 'standard' },
-  { id: 'barbed-clip-on-with-leg', label: 'Barbed clip-on with leg', image: m('barbed-clip-on-with-leg'), group: 'clip', family: 'barbedClipOnLeg', dims: CLIP, row: 'standard' },
-  { id: 'standard-bar-snap-on', label: 'Standard bar snap-on', image: m('standard-bar-snap-on'), group: 'clip', family: 'standardBarSnapOn', dims: CLIP, row: 'standard' },
-  { id: 'full-round-snap-on', label: 'Full-round snap-on', image: m('full-round-snap-on'), group: 'clip', family: 'fullRoundSnapOn', dims: CLIP, row: 'standard' },
+  { id: 'standard-angle', label: 'Standard angle', image: iso('standard-angle'), group: 'angle', family: 'standardAngle', dims: FLAT, row: 'standard' },
+  { id: 'clip-on', label: 'Clip-on', image: iso('clip-on'), group: 'clip', family: 'clipOn', dims: CLIP, row: 'standard' },
+  { id: 'clip-on-with-leg', label: 'Clip-on with leg', image: iso('clip-on-with-leg'), group: 'clip', family: 'clipOnLeg', dims: CLIP, row: 'standard' },
+  { id: 'guide-rail-snap-on', label: 'Guide rail snap-on', image: iso('guide-rail-snap-on'), group: 'clip', family: 'guideRailSnapOn', dims: CLIP, row: 'standard' },
+  { id: 'barbed-clip-on', label: 'Barbed clip-on', image: iso('barbed-clip-on'), group: 'clip', family: 'barbedClipOn', dims: CLIP, row: 'standard' },
+  { id: 'barbed-clip-on-with-leg', label: 'Barbed clip-on with leg', image: iso('barbed-clip-on-with-leg'), group: 'clip', family: 'barbedClipOnLeg', dims: CLIP, row: 'standard' },
+  { id: 'standard-bar-snap-on', label: 'Standard bar snap-on', image: iso('standard-bar-snap-on'), group: 'clip', family: 'standardBarSnapOn', dims: CLIP, row: 'standard' },
+  { id: 'full-round-snap-on', label: 'Full-round snap-on', image: iso('full-round-snap-on'), group: 'clip', family: 'fullRoundSnapOn', dims: CLIP, row: 'standard' },
   { id: 'other', label: 'Other', image: null, group: 'other', family: null, dims: CLIP, row: 'standard' },
-  { id: 'radius-center-rail', label: 'Radius center rail hold-down', image: '/onetrack/parts/radius-center-rail-render.png', group: 'radius', family: 'radiusCenterRail', dims: [], row: 'radius' },
-  { id: 'radius-angled', label: 'Radius angled hold-down', image: '/onetrack/parts/radius-angled-render.png', group: 'radius', family: 'radiusAngled', dims: [], row: 'radius' },
-  { id: 'radius-snap-on', label: 'Radius snap-on', image: '/onetrack/parts/snapon-3-8-render.png', group: 'radius', family: 'radiusSnapOn', dims: [], row: 'radius' },
-  { id: 'radius-standard-edge', label: 'Radius standard edge hold-down', image: m('radius-standard-edge'), group: 'radius', family: 'radiusStandardEdge', dims: [], row: 'radius' },
-  { id: 'radius-tabbed-edge', label: 'Radius tabbed edge hold-down', image: m('radius-tabbed-edge'), group: 'radius', family: 'radiusTabbedEdge', dims: [], row: 'radius' },
-  { id: 's2400-hold-down', label: 'Series 2400 hold-down guide', image: m('s2400-hold-down'), group: 'radius', family: 's2400HoldDown', dims: [], row: 'radius' },
-  { id: 'ss-backed-t', label: 'Stainless-backed T (flat)', image: m('ss-backed'), group: 'fixed', family: 'ssBackedT', dims: [], row: 'ssBacked' },
-  { id: 'ss-backed-l', label: 'Stainless-backed L (with leg)', image: m('ss-backed'), group: 'fixed', family: 'ssBackedL', dims: [], row: 'ssBacked' },
+  { id: 'radius-center-rail', label: 'Radius center rail hold-down', image: iso('radius-center-rail'), group: 'radius', family: 'radiusCenterRail', dims: [], row: 'radius' },
+  { id: 'radius-angled', label: 'Radius angled hold-down', image: iso('radius-angled'), group: 'radius', family: 'radiusAngled', dims: [], row: 'radius' },
+  { id: 'radius-snap-on', label: 'Radius snap-on', image: iso('radius-snap-on'), group: 'radius', family: 'radiusSnapOn', dims: [], row: 'radius' },
+  { id: 'radius-standard-edge', label: 'Radius standard edge hold-down', image: iso('radius-standard-edge'), group: 'radius', family: 'radiusStandardEdge', dims: [], row: 'radius' },
+  { id: 'radius-tabbed-edge', label: 'Radius tabbed edge hold-down', image: iso('radius-tabbed-edge'), group: 'radius', family: 'radiusTabbedEdge', dims: [], row: 'radius' },
+  { id: 's2400-hold-down', label: 'Series 2400 hold-down guide', image: iso('s2400-hold-down'), group: 'radius', family: 's2400HoldDown', dims: [], row: 'radius' },
+  { id: 'ss-backed-t', label: 'Stainless-backed T (flat)', image: iso('ss-backed-t'), group: 'fixed', family: 'ssBackedT', dims: [], row: 'ssBacked' },
+  { id: 'ss-backed-l', label: 'Stainless-backed L (with leg)', image: iso('ss-backed-l'), group: 'fixed', family: 'ssBackedL', dims: [], row: 'ssBacked' },
 ]
 
 export function getProfile(id: string | null | undefined): WearstripProfile | undefined {
