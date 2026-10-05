@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'wouter'
 import { MoreVertical, Search, ChevronRight, Plus } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAssessmentsStore } from '../../store/assessmentsStore'
@@ -281,12 +280,6 @@ export function AssessmentsList({ onNew, onEdit }: Props) {
           </button>
         </>
       )}
-
-      <p className="text-center pt-2">
-        <Link href="/aim-glide" className="text-brand underline text-base">
-          Go to the ROI Calculator
-        </Link>
-      </p>
     </div>
   )
 }
