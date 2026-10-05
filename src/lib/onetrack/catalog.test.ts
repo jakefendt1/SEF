@@ -5,7 +5,7 @@ import { FAMILIES, PROFILES, colorsFor, framesFor, quoteAsOptions, defaultQuoteA
 
 // Every file under public/onetrack, as "/onetrack/..." (the path the app uses).
 const PUBLIC_FILES = new Set(
-  Object.keys(import.meta.glob('/public/onetrack/**/*.png')).map((k) => k.replace(/^\/public/, '')),
+  Object.keys(import.meta.glob('/public/onetrack/**/*.{png,jpg}')).map((k) => k.replace(/^\/public/, '')),
 )
 
 describe('catalog', () => {
@@ -121,9 +121,16 @@ describe('profiles', () => {
       ...PROFILES.map((p) => p.image).filter((x): x is string => x !== null),
       ...FAMILIES.flatMap((f) => f.drawings),
       ...CATEGORIES.map((c) => c.image).filter((x): x is string => x !== null),
+      ...CATALOG.map((i) => i.image).filter((x): x is string => !!x),
     ]
     expect(PUBLIC_FILES.size).toBeGreaterThan(0)
     for (const path of paths) expect(PUBLIC_FILES.has(path), path).toBe(true)
+  })
+
+  it('every part outside wearstrip has a picture from the menu', () => {
+    for (const item of CATALOG.filter((i) => i.category !== 'wearstrip')) expect(item.image, item.id).toBeTruthy()
+    expect(getItem('a3dxxx001imt-00')?.image).toBe('/onetrack/menu/ring-snap.jpg')
+    expect(getItem('a3exxx002imt-00')?.image).toBe('/onetrack/menu/ring-split.jpg')
   })
 
   it('C2: 12 worksheet profiles + Other + 3 radius, each with a dimension list', () => {

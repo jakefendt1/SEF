@@ -8,6 +8,17 @@ import { DimInput, TextField } from './controls'
 const THERMODRIVE = ['8026', '8050', '8126', '8140']
 const SERIES_SUGGESTIONS = [...BELT_SERIES.map((s) => `S${s.series}`), ...THERMODRIVE.map((s) => `ThermoDrive ${s}`)]
 
+/** Belt series suggestions for any field with list="onetrack-series". Rendered once per page. */
+export function SeriesSuggestions() {
+  return (
+    <datalist id="onetrack-series">
+      {SERIES_SUGGESTIONS.map((s) => (
+        <option key={s} value={s} />
+      ))}
+    </datalist>
+  )
+}
+
 export function JobStep({
   job,
   unit,
@@ -52,11 +63,6 @@ export function JobStep({
           onChange={(v) => onChange({ beltSeries: v })}
           helper="e.g. S1600. Sprockets and pullers are filtered to it."
         />
-        <datalist id="onetrack-series">
-          {SERIES_SUGGESTIONS.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
         <DimInput
           key={`width-${unit}`}
           id="job-width"

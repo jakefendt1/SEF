@@ -29,7 +29,7 @@ export function BomPanel({
   lines: readonly BomLine[]
   onQty: (lineId: string, qty: number) => void
   onRemove: (lineId: string) => void
-  /** Wearstrip: reopen the worksheet. Quote-only: edit the note. */
+  /** Wearstrip / shaft: reopen the worksheet. Quote-only: edit the note. */
   onEdit: (lineId: string) => void
   className?: string
 }) {
@@ -46,7 +46,7 @@ export function BomPanel({
         <ol className="divide-y divide-border">
           {rows.map((r) => {
             const line = lines.find((l) => l.id === r.lineId)
-            const editable = line?.kind === 'wearstrip' || line?.kind === 'quoteOnly'
+            const editable = line?.kind === 'wearstrip' || line?.kind === 'quoteOnly' || line?.kind === 'shaft'
             return (
               <li key={r.lineId} className="px-4 py-3 space-y-2">
                 <div className="flex gap-2">
@@ -58,7 +58,7 @@ export function BomPanel({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 pl-7">
-                  {line?.kind === 'wearstrip' ? (
+                  {line?.kind === 'wearstrip' || line?.kind === 'shaft' ? (
                     <span className="text-base font-semibold mr-auto">
                       {r.qty === null ? 'Not finished' : `Qty ${r.qty} (${r.uom})`}
                     </span>

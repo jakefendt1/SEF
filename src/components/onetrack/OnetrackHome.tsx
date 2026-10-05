@@ -38,6 +38,7 @@ import {
   resolveBom,
   setNote,
   setQty,
+  upsertShaft,
   upsertWearstrip,
   type BomLine,
   type MissingItem,
@@ -45,17 +46,19 @@ import {
 } from '@/lib/onetrack/bom'
 import { deletePhotosFor, listPhotos, type BomPhoto } from '@/lib/onetrack/photos'
 import { emptyWorksheet, type WearstripWorksheet } from '@/lib/onetrack/wearstrip'
+import { emptyShaftSpec, type ShaftSpec } from '@/lib/onetrack/shaft'
 import { buildRecord, fromRecord, recheckRecord, recordTitle, type StoredOnetrackBom } from '@/lib/onetrackRecord'
 import { WRITE_MESSAGES } from '@/lib/writeOutcome'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useOnetrackStore } from '@/store/onetrackStore'
 import { BomPanel } from './BomPanel'
-import { JobStep } from './JobStep'
+import { JobStep, SeriesSuggestions } from './JobStep'
 import { CategoryList, CategoryTiles, QuoteOnlyDialog } from './PartsStep'
 import { PhotosStep } from './PhotosStep'
 import { ReviewStep } from './ReviewStep'
 import { WearstripEditor } from './WearstripEditor'
+import { ShaftEditor } from './ShaftEditor'
 
 const STEPS = [
   { id: 'job', title: 'Job' },
@@ -99,7 +102,11 @@ export function OnetrackHome() {
   const [photos, setPhotos] = useState<BomPhoto[]>([])
   const [step, setStep] = useState<StepId>('job')
   const [category, setCategory] = useState<CategoryId | null>(null)
-  const [editing, setEditing] = useState<{ id: string; ws: WearstripWorksheet; isNew: boolean } | null>(null)
+  const [editing, setEditing] = useState<
+    | { kind: 'wearstrip'; id: string; ws: WearstripWorksheet; isNew: boolean }
+    | { kind: 'shaft'; id: string; itemId: string; spec: ShaftSpec; isNew: boolean }
+    | null
+  >(null)
   const [editingQuote, setEditingQuote] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
@@ -170,7 +177,10 @@ export function OnetrackHome() {
     setPanelOpen(false)
     if (line.kind === 'wearstrip') {
       setStep('parts')
-      setEditing({ id: line.id, ws: line.worksheet, isNew: false })
+      setEditing({ kind: 'wearstrip', id: line.id, ws: line.worksheet, isNew: false })
+    } else if (line.kind === 'shaft') {
+      setStep('parts')
+      setEditing({ kind: 'shaft', id: line.id, itemId: line.itemId, spec: line.spec, isNew: false })
     } else if (line.kind === 'quoteOnly') {
       setEditingQuote(line.id)
     }
@@ -178,8 +188,13 @@ export function OnetrackHome() {
   const quoteLine = lines.find((l) => l.id === editingQuote && l.kind === 'quoteOnly')
 
   const openCategory = (c: CategoryId) => {
-    if (c === 'wearstrip') setEditing({ id: crypto.randomUUID(), ws: emptyWorksheet(), isNew: true })
+    if (c === 'wearstrip') setEditing({ kind: 'wearstrip', id: crypto.randomUUID(), ws: emptyWorksheet(), isNew: true })
     else setCategory(c)
+    window.scrollTo({ top: 0 })
+  }
+
+  const openShaft = (itemId: string) => {
+    setEditing({ kind: 'shaft', id: crypto.randomUUID(), itemId, spec: emptyShaftSpec(), isNew: true })
     window.scrollTo({ top: 0 })
   }
 
@@ -269,6 +284,7 @@ export function OnetrackHome() {
 
   return (
     <div className="flex flex-col bg-background pb-24 lg:pb-0">
+      <SeriesSuggestions />
       {/* Page toolbar. The shell owns the sticky header and back navigation. */}
       <div className="border-b bg-card">
         <div className="container flex flex-wrap items-center justify-between gap-3 py-3">
@@ -366,7 +382,22 @@ export function OnetrackHome() {
           <div className="rounded-xl border border-border bg-card p-4 sm:p-6 space-y-6 min-w-0">
             {step === 'job' && <JobStep job={job} unit={unit} onChange={(p) => setJob((j) => ({ ...j, ...p }))} showErrors={triedSave} />}
             {step === 'parts' &&
-              (editing ? (
+              (editing?.kind === 'shaft' ? (
+                <ShaftEditor
+                  key={`${editing.id}-${unit}`}
+                  itemId={editing.itemId}
+                  initial={editing.spec}
+                  isNew={editing.isNew}
+                  unit={unit}
+                  onCancel={() => setEditing(null)}
+                  onSave={(spec) => {
+                    setLines((l) => upsertShaft(l, editing.id, editing.itemId, spec))
+                    toast.success(editing.isNew ? 'Shaft added to the BOM' : 'BOM line updated')
+                    setEditing(null)
+                    window.scrollTo({ top: 0 })
+                  }}
+                />
+              ) : editing ? (
                 <WearstripEditor
                   key={`${editing.id}-${unit}`}
                   initial={editing.ws}
@@ -388,6 +419,7 @@ export function OnetrackHome() {
                   onBack={() => setCategory(null)}
                   onAdd={onAdd}
                   onAddQuoteOnly={onAddQuoteOnly}
+                  onAddShaft={openShaft}
                 />
               ) : (
                 <CategoryTiles lines={lines} onOpen={openCategory} />

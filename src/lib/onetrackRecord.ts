@@ -6,6 +6,7 @@
 // lib/onetrack/photos.ts): Firestore documents cap at 1 MB.
 import { emptyJob, resolveBom, type BomLine, type OnetrackJob } from './onetrack/bom'
 import { emptyWorksheet } from './onetrack/wearstrip'
+import { emptyDrawing, emptyShaftSpec } from './onetrack/shaft'
 import { ONETRACK_VERSION } from './onetrack/version'
 import type { Unit } from './measurement'
 
@@ -77,9 +78,26 @@ export function fromRecord(r: Partial<StoredOnetrackBom>): {
   notes: string
 } {
   const job = { ...emptyJob('', ''), ...(r.job ?? {}) }
-  const lines = (r.lines ?? []).map((l): BomLine =>
-    l.kind === 'wearstrip' ? { ...l, worksheet: { ...emptyWorksheet(), ...l.worksheet, dims: { ...l.worksheet?.dims } } } : l,
-  )
+  const lines = (r.lines ?? []).map((l): BomLine => {
+    if (l.kind === 'wearstrip') {
+      return { ...l, worksheet: { ...emptyWorksheet(), ...l.worksheet, dims: { ...l.worksheet?.dims } } }
+    }
+    if (l.kind === 'shaft') {
+      const base = emptyShaftSpec()
+      return {
+        ...l,
+        spec: {
+          ...base,
+          ...l.spec,
+          drive: { ...emptyDrawing(), ...l.spec?.drive },
+          idle: { ...emptyDrawing(), ...l.spec?.idle },
+          driveSprockets: { ...base.driveSprockets, ...l.spec?.driveSprockets },
+          idleSprockets: { ...base.idleSprockets, ...l.spec?.idleSprockets },
+        },
+      }
+    }
+    return l
+  })
   return { job, unit: r.unit === 'mm' ? 'mm' : 'in', lines, notes: r.notes ?? '' }
 }
 

@@ -44,7 +44,7 @@ describe('pieces', () => {
 
   it('a category list filters to the job belt series', () => {
     const html = renderToStaticMarkup(
-      <CategoryList category="cleanLockSprockets" beltSeries="S1600" onBack={noop} onAdd={noop} onAddQuoteOnly={noop} />,
+      <CategoryList category="cleanLockSprockets" beltSeries="S1600" onBack={noop} onAdd={noop} onAddQuoteOnly={noop} onAddShaft={noop} />,
     )
     expect(html).toContain('S3F8M2CHE7NG-00')
     expect(html).not.toContain('S3D8M2CPE7NG-00')

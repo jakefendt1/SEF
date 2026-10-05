@@ -30,7 +30,7 @@ export interface CategoryDef {
   label: string
   /** One plain line under the title on the category screen. */
   helper: string
-  /** Tile picture, under public/. Null = use `icon` until artwork exists. */
+  /** Tile picture, under public/ (cropped from the menu). Null = use `icon`. */
   image: string | null
   icon: LucideIcon
   filters: readonly FilterDef[]
@@ -55,7 +55,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'beltPullers',
     label: 'Belt pullers',
     helper: 'Puller sets for pulling a belt together to join it.',
-    image: null,
+    image: '/onetrack/menu/puller-5link.jpg',
     icon: Grip,
     filters: [],
     bySeries: true,
@@ -65,7 +65,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'rodRemovers',
     label: 'Rod removal tools',
     helper: 'Tools for pushing rods out and lacing ThermoDrive.',
-    image: null,
+    image: '/onetrack/menu/rod-remover.jpg',
     icon: Wrench,
     filters: [],
     bySeries: false,
@@ -75,7 +75,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'rulers',
     label: 'Belt rulers',
     helper: 'Belt replacement rulers (every belt except S2100).',
-    image: null,
+    image: '/onetrack/menu/ruler.jpg',
     icon: Ruler,
     filters: [],
     bySeries: false,
@@ -85,7 +85,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'cleanLockSprockets',
     label: 'CleanLock sprockets',
     helper: 'Sprockets by belt series, tooth count and bore.',
-    image: null,
+    image: '/onetrack/menu/sprocket.jpg',
     icon: Cog,
     filters: [
       { key: 'teeth', label: 'Teeth' },
@@ -98,7 +98,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'cleanLockRollers',
     label: 'CleanLock returnway rollers',
     helper: 'Returnway rollers for square shaft.',
-    image: null,
+    image: '/onetrack/menu/cleanlock-rollers.jpg',
     icon: Cylinder,
     filters: [
       { key: 'od', label: 'OD' },
@@ -111,7 +111,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'cleanLockAccessories',
     label: 'CleanLock accessories',
     helper: 'Shaft mounts and the roller tool set.',
-    image: null,
+    image: '/onetrack/menu/shaft-mount.jpg',
     icon: Puzzle,
     filters: [],
     bySeries: false,
@@ -121,7 +121,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'straightRollers',
     label: 'Straight rollers',
     helper: 'Rollers for round shaft.',
-    image: null,
+    image: '/onetrack/menu/straight-rollers.jpg',
     icon: Cylinder,
     filters: [
       { key: 'od', label: 'OD' },
@@ -136,7 +136,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'flangedRollers',
     label: 'Flanged rollers',
     helper: 'Flanged rollers for round shaft.',
-    image: null,
+    image: '/onetrack/menu/flanged-rollers.jpg',
     icon: Disc,
     filters: [
       { key: 'od', label: 'OD' },
@@ -150,7 +150,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'retainerRings',
     label: 'Retainer rings',
     helper: 'Stainless retainer rings, sold singly.',
-    image: null,
+    image: '/onetrack/menu/ring-split.jpg',
     icon: Circle,
     filters: [
       { key: 'shaft', label: 'Shaft' },
@@ -164,7 +164,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'sprocketSpacers',
     label: 'Sprocket spacers',
     helper: 'Spacers for 1.5 in square shaft, sold singly.',
-    image: null,
+    image: '/onetrack/menu/spacers.jpg',
     icon: CircleDot,
     filters: [
       { key: 'width', label: 'Width' },
@@ -177,7 +177,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
     id: 'scrapers',
     label: 'Scrapers',
     helper: 'EZ Mount scraper (wet environments only).',
-    image: null,
+    image: '/onetrack/menu/scraper.jpg',
     icon: Eraser,
     filters: [],
     bySeries: false,
@@ -186,8 +186,8 @@ export const CATEGORIES: readonly CategoryDef[] = [
   {
     id: 'quoteOnly',
     label: 'Shafts & CIP (CS quotes)',
-    helper: 'No part number. Tell CS what you need and they quote it.',
-    image: null,
+    helper: 'No part number. Shafts get a spec sheet for CS and the shop; for CIP, describe what you need.',
+    image: '/onetrack/menu/ss-shaft.jpg',
     icon: FileQuestion,
     filters: [],
     bySeries: false,

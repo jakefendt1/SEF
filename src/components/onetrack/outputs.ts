@@ -71,6 +71,26 @@ export async function makePdf(s: BomState): Promise<{ blob: Blob; fileName: stri
   return { blob: pdf.output('blob'), fileName, logoRendered }
 }
 
+/** One Square Shaft Specification Sheet per shaft line, numbered like the BOM. */
+export async function makeShaftPdfs(s: BomState): Promise<{ blob: Blob; fileName: string; n: number }[]> {
+  const rows = resolveBom(s.lines, s.unit).filter((r) => r.kind === 'shaft')
+  if (rows.length === 0) return []
+  const { buildShaftPdf, shaftPdfFileName } = await import('@/lib/shaftSpecPdf')
+  const { getItem } = await import('@/lib/onetrack/catalog')
+  return rows.flatMap((r) => {
+    const line = s.lines.find((l) => l.id === r.lineId)
+    if (line?.kind !== 'shaft') return []
+    const { pdf } = buildShaftPdf({
+      job: s.job,
+      unit: s.unit,
+      spec: line.spec,
+      lineLabel: `Line ${r.n}`,
+      itemDescription: getItem(line.itemId)?.description ?? 'Square shaft',
+    })
+    return [{ blob: pdf.output('blob'), fileName: shaftPdfFileName(s.job, r.n), n: r.n }]
+  })
+}
+
 export function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

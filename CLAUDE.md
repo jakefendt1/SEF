@@ -180,6 +180,19 @@ use Storage with a real failure path -- not the record.
 `mailto:` can't attach the PDF, which is the one thing CS needs. Share PDF uses
 the share sheet where `navigator.canShare({files})` allows it.
 
+**Shafts carry the whole spec sheet.** Both shaft items in the menu open a
+worksheet rebuilt from Intralox's Square Shaft Specification Sheet
+(`../Onetrack/Shaft Spec Form.pdf`, front side only; the back's "other
+configurations" go in the shop notes). The BOM shows a one-line summary; the
+sheet downloads as its own PDF (`lib/shaftSpecPdf.ts`) because CS forwards it
+to the machine shop. Shaft dimensions print to four decimals, never rounded to
+a fraction -- a 3/16 keyway is 0.1875. Chamfer starts at Yes because the paper
+form does.
+
+**Part pictures are crops of the menu** (`public/onetrack/menu/`), so a rep
+can match what's on screen to the page the customer is holding. Swap a file
+for better artwork without renaming it.
+
 **Copy for email never claims a copy it didn't make.** If the clipboard is
 refused, the text is shown to copy by hand.
 

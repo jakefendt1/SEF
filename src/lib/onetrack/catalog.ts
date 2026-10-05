@@ -61,6 +61,8 @@ export interface CatalogItem {
   page: number
   /** Quote-only items: what CS needs the rep to write in the line note. */
   notePrompt?: string
+  /** Picture cropped from the menu page, under public/. */
+  image?: string
 }
 
 export interface WearstripItem extends CatalogItem {
@@ -208,6 +210,40 @@ function simple(
     uom: 'each',
     page: r.page,
   }
+}
+
+// Pictures cropped from the OneTrack menu (public/onetrack/menu/), so a rep
+// can match a part to the page a customer is holding.
+const menuImage = (name: string) => `/onetrack/menu/${name}.jpg`
+const IMAGE_BY_ID: Record<string, string> = {
+  'c3sf087xxxxx-00': menuImage('puller-3link'),
+  'c3sf125xxxxx-00': menuImage('puller-5link'),
+  'c3sf101xxxhb-00': menuImage('puller-td'),
+  'c3j7xxxxxxxx-00': menuImage('rod-remover'),
+  'h2a5bjixxxxx-00': menuImage('td-pliers'),
+  'h2a4bhixxxxx-00': menuImage('td-pliers'),
+  'c3sk127a02mv-00': menuImage('shaft-mount'),
+  'c3ss129xxxxx-00': menuImage('roller-tool'),
+  'quote-cleanlock-shaft': menuImage('cleanlock-shaft'),
+  'quote-ss-shaft': menuImage('ss-shaft'),
+  'quote-cip': menuImage('cip'),
+}
+const IMAGE_BY_CATEGORY: Partial<Record<CategoryId, string>> = {
+  rulers: menuImage('ruler'),
+  cleanLockSprockets: menuImage('sprocket'),
+  cleanLockRollers: menuImage('cleanlock-rollers'),
+  straightRollers: menuImage('straight-rollers'),
+  flangedRollers: menuImage('flanged-rollers'),
+  sprocketSpacers: menuImage('spacers'),
+  scrapers: menuImage('scraper'),
+}
+for (const item of items) {
+  const image =
+    IMAGE_BY_ID[item.id] ??
+    (item.category === 'retainerRings'
+      ? menuImage(item.attrs.type === 'Snap ring' ? 'ring-snap' : 'ring-split')
+      : IMAGE_BY_CATEGORY[item.category])
+  if (image) item.image = image
 }
 
 export const CATALOG: readonly CatalogItem[] = items

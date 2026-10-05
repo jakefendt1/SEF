@@ -15,6 +15,7 @@ import { getItem, itemsIn, type CatalogItem, type CategoryId } from '@/lib/onetr
 import { CATEGORIES, getCategory, type CategoryDef } from '@/lib/onetrack/categories'
 import { chipOptions, filterItems, seriesLabel, normalizeSeries } from '@/lib/onetrack/filter'
 import type { BomLine } from '@/lib/onetrack/bom'
+import { isShaftItem } from '@/lib/onetrack/shaft'
 import { cn } from '@/lib/utils'
 import { ChipRow, QtyStepper, fieldLabel } from './controls'
 
@@ -83,12 +84,15 @@ export function CategoryList({
   onBack,
   onAdd,
   onAddQuoteOnly,
+  onAddShaft,
 }: {
   category: CategoryId
   beltSeries: string
   onBack: () => void
   onAdd: (itemId: string, qty: number) => void
   onAddQuoteOnly: (itemId: string, note: string, qty: number) => void
+  /** Shafts open the shaft spec sheet instead of a note. */
+  onAddShaft: (itemId: string) => void
 }) {
   const def = getCategory(category)
   const all = itemsIn(category)
@@ -157,7 +161,9 @@ export function CategoryList({
             <ItemCard
               key={item.id}
               item={item}
-              onAdd={(qty) => (item.category === 'quoteOnly' ? setQuoting(item) : onAdd(item.id, qty))}
+              onAdd={(qty) =>
+                isShaftItem(item.id) ? onAddShaft(item.id) : item.category === 'quoteOnly' ? setQuoting(item) : onAdd(item.id, qty)
+              }
             />
           ))}
         </ul>
@@ -178,13 +184,17 @@ export function CategoryList({
 function ItemCard({ item, onAdd }: { item: CatalogItem; onAdd: (qty: number) => void }) {
   const [qty, setQty] = useState(1)
   const quoteOnly = item.category === 'quoteOnly'
+  const shaft = isShaftItem(item.id)
   return (
     <li className="rounded-xl border border-gray-300 bg-white p-3 flex flex-wrap items-center gap-3">
-      <div className="flex-1 min-w-[14rem]">
+      {item.image && (
+        <img src={item.image} alt="" loading="lazy" className="w-24 h-20 object-contain rounded-md bg-white border border-border shrink-0" />
+      )}
+      <div className="flex-1 min-w-[12rem]">
         <p className="text-base leading-snug">{item.description}</p>
         <p className="text-sm text-muted-foreground mt-0.5">
           <span className={cn('font-mono-num', !quoteOnly && 'font-semibold text-foreground')}>
-            {item.partNumber ?? 'No part number: CS quotes it'}
+            {item.partNumber ?? (shaft ? 'No part number: CS quotes it from the spec sheet' : 'No part number: CS quotes it')}
           </span>{' '}
           · {item.uom} · menu p. {item.page}
         </p>
@@ -201,7 +211,7 @@ function ItemCard({ item, onAdd }: { item: CatalogItem; onAdd: (qty: number) => 
             }
           }}
         >
-          <Plus className="size-5" /> {quoteOnly ? 'Add…' : 'Add'}
+          <Plus className="size-5" /> {shaft ? 'Fill in spec sheet' : quoteOnly ? 'Add…' : 'Add'}
         </Button>
       </div>
     </li>

@@ -16,6 +16,7 @@ import {
   wearstripWarnings,
   type WearstripWorksheet,
 } from './wearstrip'
+import { missingForShaft, shaftRow, shaftWarnings, type ShaftSpec } from './shaft'
 import type { Unit } from '../measurement'
 
 export interface OnetrackJob {
@@ -40,6 +41,8 @@ export type BomLine =
   | { id: string; kind: 'catalog'; itemId: string; qty: number }
   | { id: string; kind: 'quoteOnly'; itemId: string; qty: number; note: string }
   | { id: string; kind: 'wearstrip'; worksheet: WearstripWorksheet }
+  /** A machined square shaft: the whole spec sheet rides on the line. */
+  | { id: string; kind: 'shaft'; itemId: string; spec: ShaftSpec }
 
 // ---- Operations (pure: each returns a new array) ----------------------------
 
@@ -88,11 +91,17 @@ export function upsertWearstrip(
     : [...lines, line]
 }
 
+/** Add a shaft line, or replace the one with this id. */
+export function upsertShaft(lines: readonly BomLine[], id: string, itemId: string, spec: ShaftSpec): BomLine[] {
+  const line: BomLine = { id, kind: 'shaft', itemId, spec }
+  return lines.some((l) => l.id === id) ? lines.map((l) => (l.id === id ? line : l)) : [...lines, line]
+}
+
 /** Set a line's quantity. Below 1 removes the line (the UI confirms first). */
 export function setQty(lines: readonly BomLine[], id: string, qty: number): BomLine[] {
   const n = wholeQty(qty)
   if (n === null) return removeLine(lines, id)
-  return lines.map((l) => (l.id === id && l.kind !== 'wearstrip' ? { ...l, qty: n } : l))
+  return lines.map((l) => (l.id === id && (l.kind === 'catalog' || l.kind === 'quoteOnly') ? { ...l, qty: n } : l))
 }
 
 export function setNote(lines: readonly BomLine[], id: string, note: string): BomLine[] {
@@ -129,11 +138,11 @@ export interface ResolvedRow {
   page: number | null
 }
 
-/** Display order: wearstrip first, then parts in category order, then CS-quoted items. */
+/** Display order: wearstrip first, then parts in category order, then shafts and other CS-quoted items. */
 function ordered(lines: readonly BomLine[]): BomLine[] {
   const rank = (l: BomLine): [number, number] => {
     if (l.kind === 'wearstrip') return [0, 0]
-    if (l.kind === 'quoteOnly') return [2, 0]
+    if (l.kind === 'quoteOnly' || l.kind === 'shaft') return [2, 0]
     const item = getItem(l.itemId)
     if (!item) return [1, Number.MAX_SAFE_INTEGER]
     return [1, CATEGORY_ORDER.indexOf(item.category) * 10_000 + catalogIndex(l.itemId)]
@@ -170,6 +179,24 @@ function resolveLine(l: BomLine, n: number, unit: Unit): ResolvedRow {
       }
     }
     return { ...base, ...row, page: null }
+  }
+
+  if (l.kind === 'shaft') {
+    const item = getItem(l.itemId)
+    const row = shaftRow(l.spec, item?.description ?? '', unit)
+    if (!row) {
+      return {
+        ...base,
+        partNumber: CS_TO_QUOTE,
+        description: 'Square shaft (spec sheet not finished)',
+        qty: null,
+        uom: '',
+        notes: '',
+        reason: null,
+        page: item?.page ?? null,
+      }
+    }
+    return { ...base, ...row, reason: null, page: item?.page ?? null }
   }
 
   const item = getItem(l.itemId)
@@ -222,6 +249,10 @@ export function missingFor(job: OnetrackJob, lines: readonly BomLine[]): Missing
       for (const field of missingForWearstrip(l.worksheet)) {
         out.push({ field, label: `Line ${n} (wearstrip): ${field}`, target: { lineId: l.id } })
       }
+    } else if (l.kind === 'shaft') {
+      for (const field of missingForShaft(l.spec)) {
+        out.push({ field, label: `Line ${n} (shaft): ${field}`, target: { lineId: l.id } })
+      }
     } else if (l.kind === 'quoteOnly' && !l.note.trim()) {
       out.push({ field: 'What CS needs', label: `Line ${n}: what CS needs to quote it`, target: { lineId: l.id } })
     }
@@ -254,6 +285,10 @@ export function warningsFor(
       }
       return
     }
+    if (l.kind === 'shaft') {
+      shaftWarnings(l.spec, unit).forEach(at)
+      return
+    }
 
     const item = getItem(l.itemId)
     if (!item) {
@@ -284,4 +319,8 @@ export const WEARSTRIP_CAUTION_SHORT =
 
 export function hasWearstrip(lines: readonly BomLine[]): boolean {
   return lines.some((l) => l.kind === 'wearstrip')
+}
+
+export function hasShaft(lines: readonly BomLine[]): boolean {
+  return lines.some((l) => l.kind === 'shaft')
 }

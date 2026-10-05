@@ -13,13 +13,23 @@ import {
 import { PDF_EXPORT_MESSAGES } from '@/lib/statusLabels'
 import {
   WEARSTRIP_CAUTION,
+  hasShaft,
   hasWearstrip,
   missingFor,
   resolveBom,
   warningsFor,
   type MissingItem,
 } from '@/lib/onetrack/bom'
-import { canSharePdf, copyForEmail, emailText, endProfileTaken, makePdf, saveBlob, type BomState } from './outputs'
+import {
+  canSharePdf,
+  copyForEmail,
+  emailText,
+  endProfileTaken,
+  makePdf,
+  makeShaftPdfs,
+  saveBlob,
+  type BomState,
+} from './outputs'
 
 export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target: MissingItem['target']) => void }) {
   const rows = resolveBom(state.lines, state.unit)
@@ -30,7 +40,8 @@ export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target
   // A PDF built for sharing, kept so a second tap can share it straight away:
   // iOS only opens the share sheet from a tap, and building the PDF can take
   // long enough that the first tap no longer counts.
-  const [shareReady, setShareReady] = useState<{ file: File; key: string } | null>(null)
+  const [shareReady, setShareReady] = useState<{ files: File[]; key: string } | null>(null)
+  const shafts = rows.filter((r) => r.kind === 'shaft')
   const stateKey = JSON.stringify([state.job, state.unit, state.lines, state.notes, state.photos.map((p) => [p.id, p.caption])])
   const shareable = canSharePdf()
 
@@ -39,7 +50,12 @@ export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target
     try {
       const { blob, fileName, logoRendered } = await makePdf(state)
       saveBlob(blob, fileName)
-      if (logoRendered) toast.success(PDF_EXPORT_MESSAGES.ok)
+      // The shaft spec sheets are their own PDFs: CS sends them to the shop.
+      const sheets = await makeShaftPdfs(state)
+      for (const sheet of sheets) saveBlob(sheet.blob, sheet.fileName)
+      if (logoRendered && sheets.length)
+        toast.success(`PDF and ${sheets.length} shaft spec sheet${sheets.length === 1 ? '' : 's'} saved to your downloads`)
+      else if (logoRendered) toast.success(PDF_EXPORT_MESSAGES.ok)
       else toast.warning(PDF_EXPORT_MESSAGES.missingLogo)
     } catch (err) {
       console.error('[onetrack pdf]', err)
@@ -51,13 +67,16 @@ export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target
 
   const share = async () => {
     const title = `OneTrack BOM: ${[state.job.customer, state.job.line].filter(Boolean).join(' ')}`
-    let file = shareReady?.key === stateKey ? shareReady.file : null
-    if (!file) {
+    let files = shareReady?.key === stateKey ? shareReady.files : null
+    if (!files) {
       setBusy('share')
       try {
         const { blob, fileName } = await makePdf(state)
-        file = new File([blob], fileName, { type: 'application/pdf' })
-        setShareReady({ file, key: stateKey })
+        const sheets = await makeShaftPdfs(state)
+        files = [blob, ...sheets.map((x) => x.blob)].map(
+          (b, i) => new File([b], i === 0 ? fileName : sheets[i - 1].fileName, { type: 'application/pdf' }),
+        )
+        setShareReady({ files, key: stateKey })
       } catch (err) {
         console.error('[onetrack share]', err)
         toast.error(PDF_EXPORT_MESSAGES.failed)
@@ -67,7 +86,7 @@ export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target
       setBusy(null)
     }
     try {
-      await navigator.share({ files: [file], title, text: emailText(state).plain })
+      await navigator.share({ files, title, text: emailText(state).plain })
     } catch (err) {
       const name = (err as { name?: string } | null)?.name
       if (name === 'AbortError') return // The rep closed the share sheet.
@@ -76,6 +95,18 @@ export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target
         return
       }
       toast.error("Couldn't open the share sheet. Use Download PDF instead.")
+    }
+  }
+
+  const downloadSheet = async (n: number) => {
+    try {
+      const sheet = (await makeShaftPdfs(state)).find((x) => x.n === n)
+      if (!sheet) throw new Error('no sheet')
+      saveBlob(sheet.blob, sheet.fileName)
+      toast.success('Shaft spec sheet saved to your downloads')
+    } catch (err) {
+      console.error('[onetrack shaft pdf]', err)
+      toast.error(PDF_EXPORT_MESSAGES.failed)
     }
   }
 
@@ -177,6 +208,22 @@ export function ReviewStep({ state, onGoTo }: { state: BomState; onGoTo: (target
           <p className="text-sm text-muted-foreground">
             Copy for email puts the BOM table on your clipboard. Attach the PDF so CS has the measurements and photos too.
           </p>
+          {hasShaft(state.lines) && (
+            <div className="rounded-xl border border-border bg-white p-3 space-y-2">
+              <p className="text-base font-semibold">Shaft spec sheets</p>
+              <p className="text-sm text-muted-foreground">
+                Each shaft gets its own Square Shaft Specification Sheet. Download PDF and Share PDF include them; attach them
+                with the BOM.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {shafts.map((r) => (
+                  <Button key={r.lineId} variant="outline" className="min-h-[48px] text-base" onClick={() => downloadSheet(r.n)}>
+                    <FileDown className="size-5" /> Shaft sheet, line {r.n}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
