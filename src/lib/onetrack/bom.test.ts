@@ -26,6 +26,7 @@ const job: OnetrackJob = {
   ...emptyJob('2026-10-05', 'Jake Fendt'),
   customer: 'Acme Snacks',
   plant: 'Beloit WI',
+  contact: 'Pat Smith',
   line: 'Packaging incline 3',
   beltSeries: 'S1600',
   beltWidthIn: 24,
@@ -102,9 +103,10 @@ describe('resolveBom', () => {
 })
 
 describe('missingFor', () => {
-  it('needs a customer, a line and at least one part', () => {
+  it('needs a customer, a contact, a line and at least one part', () => {
     expect(missingFor(emptyJob('2026-10-05', 'J'), []).map((m) => m.field)).toEqual([
       'Customer',
+      'Contact name',
       'Line / conveyor ID',
       'Parts',
     ])
@@ -231,6 +233,7 @@ describe('copy for email', () => {
       [
         'OneTrack BOM: quote request',
         'Customer: Acme Snacks, Beloit WI | Line: Packaging incline 3',
+        'Contact: Pat Smith',
         'Belt: S1600, 24 in',
         'Prepared by: Jake Fendt, 2026-10-05',
         '',

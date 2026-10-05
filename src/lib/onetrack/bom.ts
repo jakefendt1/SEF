@@ -22,6 +22,8 @@ import type { Unit } from '../measurement'
 export interface OnetrackJob {
   customer: string
   plant: string
+  /** The customer's contact person. CS needs a name to quote to. */
+  contact: string
   /** Line / conveyor ID. The save "Reference". */
   line: string
   /** YYYY-MM-DD. */
@@ -34,7 +36,7 @@ export interface OnetrackJob {
 
 /** Date and name are app facts; nothing describing the customer's line is pre-filled. */
 export function emptyJob(date: string, preparedBy: string): OnetrackJob {
-  return { customer: '', plant: '', line: '', date, preparedBy, beltSeries: '', beltWidthIn: null }
+  return { customer: '', plant: '', contact: '', line: '', date, preparedBy, beltSeries: '', beltWidthIn: null }
 }
 
 export type BomLine =
@@ -240,6 +242,7 @@ export interface MissingItem {
 export function missingFor(job: OnetrackJob, lines: readonly BomLine[]): MissingItem[] {
   const out: MissingItem[] = []
   if (!job.customer.trim()) out.push({ field: 'Customer', label: 'Customer', target: 'job' })
+  if (!job.contact.trim()) out.push({ field: 'Contact name', label: 'Contact name', target: 'job' })
   if (!job.line.trim()) out.push({ field: 'Line / conveyor ID', label: 'Line / conveyor ID', target: 'job' })
   if (lines.length === 0) out.push({ field: 'Parts', label: 'At least one part', target: 'parts' })
 

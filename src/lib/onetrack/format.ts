@@ -25,6 +25,7 @@ function headerLines(b: BomText): string[] {
   const { job, unit } = b
   const customer = [job.customer.trim(), job.plant.trim()].filter(Boolean).join(', ')
   const lines = [`Customer: ${customer} | Line: ${job.line.trim()}`]
+  if (job.contact.trim()) lines.push(`Contact: ${job.contact.trim()}`)
   const belt = [
     job.beltSeries.trim(),
     job.beltWidthIn !== null ? `${formatDim(job.beltWidthIn, unit)} ${unit}` : '',

@@ -85,7 +85,7 @@ describe('pieces', () => {
   })
 
   it('review offers the outputs for a complete BOM', () => {
-    const job = { ...emptyJob('2026-10-05', 'J'), customer: 'Acme', line: 'L1' }
+    const job = { ...emptyJob('2026-10-05', 'J'), customer: 'Acme', contact: 'Pat Smith', line: 'L1' }
     const html = renderToStaticMarkup(
       <ReviewStep state={{ job, unit: 'in', lines: addItem([], 's3f8m2che7ng-00', 2), notes: '', photos: [] }} onGoTo={noop} />,
     )

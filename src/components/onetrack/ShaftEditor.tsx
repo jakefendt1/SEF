@@ -22,7 +22,7 @@ import {
   type Sprockets,
 } from '@/lib/onetrack/shaft'
 import { DimInput, QtyStepper, TextField, fieldLabel } from './controls'
-import { ShaftDiagram } from './ShaftDiagram'
+import { DrillTapDiagram, KeywayDiagram, ShaftDiagram } from './ShaftDiagram'
 
 function Section({ n, title, helper, children }: { n: number; title: string; helper?: string; children: React.ReactNode }) {
   return (
@@ -116,6 +116,9 @@ function DrawingFields({
           <CheckField id={`${id}-keyway`} title="Keyway (K)" checked={!!k} onChange={(v) => keyway.onChange(v ? emptyKeyway() : null)} />
           {k && (
             <>
+              <div className="rounded-lg border border-border bg-white p-2">
+                <KeywayDiagram />
+              </div>
               <ChoiceButtons
                 title="Which end"
                 value={String(k.end) as '1' | '2'}
@@ -127,10 +130,10 @@ function DrawingFields({
                 ]}
               />
               <div className="grid gap-3 sm:grid-cols-2">
-                {dim('kw', 'Width', k.widthIn, (v) => keyway.onChange({ ...k, widthIn: v }))}
-                {dim('kd', 'Depth', k.depthIn, (v) => keyway.onChange({ ...k, depthIn: v }))}
-                {dim('kl', 'Length', k.lengthIn, (v) => keyway.onChange({ ...k, lengthIn: v }), 'Keyway length includes the arc.')}
-                {dim('ks', 'Start (from the end)', k.startIn, (v) => keyway.onChange({ ...k, startIn: v }))}
+                {dim('kw', 'W: Width (across the slot)', k.widthIn, (v) => keyway.onChange({ ...k, widthIn: v }), 'Usually matches the key, e.g. 3/8 in.')}
+                {dim('kd', 'Dp: Depth (into the shaft)', k.depthIn, (v) => keyway.onChange({ ...k, depthIn: v }), 'Measured down from the top of the journal.')}
+                {dim('kl', 'Ln: Length (includes the arc)', k.lengthIn, (v) => keyway.onChange({ ...k, lengthIn: v }), 'End to end of the slot, rounded end included.')}
+                {dim('ks', 'S: Start (from the shaft end)', k.startIn, (v) => keyway.onChange({ ...k, startIn: v }), '0 = the keyway runs out the end of the shaft.')}
               </div>
             </>
           )}
@@ -145,9 +148,14 @@ function DrawingFields({
           onChange={(v) => set({ drillTap: v ? emptyDrillTap() : null })}
         />
         {drawing.drillTap && (
-          <div className="grid gap-3 sm:grid-cols-3">
-            {dim('dtd', 'Depth', drawing.drillTap.depthIn, (v) => set({ drillTap: { ...drawing.drillTap!, depthIn: v } }))}
-            <TextField id={`${id}-dts`} title="Screw size" value={drawing.drillTap.screwSize} onChange={(v) => set({ drillTap: { ...drawing.drillTap!, screwSize: v } })} helper="e.g. 1/2-13" />
+          <div className="rounded-lg border border-border bg-white p-2">
+            <DrillTapDiagram />
+          </div>
+        )}
+        {drawing.drillTap && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {dim('dtd', 'Depth (from the end face)', drawing.drillTap.depthIn, (v) => set({ drillTap: { ...drawing.drillTap!, depthIn: v } }))}
+            <TextField id={`${id}-dts`} title="Screw size" value={drawing.drillTap.screwSize} onChange={(v) => set({ drillTap: { ...drawing.drillTap!, screwSize: v } })} helper="Diameter and thread, e.g. 1/2-13" />
             <TextField id={`${id}-dtt`} title="Threads per inch" value={drawing.drillTap.threadsPer} onChange={(v) => set({ drillTap: { ...drawing.drillTap!, threadsPer: v } })} />
             <CheckField id={`${id}-dt1`} title="End 1" checked={drawing.drillTap.end1} onChange={(v) => set({ drillTap: { ...drawing.drillTap!, end1: v } })} />
             <CheckField id={`${id}-dt2`} title="End 2" checked={drawing.drillTap.end2} onChange={(v) => set({ drillTap: { ...drawing.drillTap!, end2: v } })} />
@@ -234,7 +242,6 @@ export function ShaftEditor({
             options={yesNo}
           />
         )}
-        <TextField id="shaft-contact" title="Contact name" optional value={spec.contactName} onChange={(v) => set({ contactName: v })} helper="The customer's contact for this shaft." />
       </Section>
 
       {spec.driveQty + spec.idleQty > 0 && (

@@ -122,7 +122,7 @@ describe('shaft lines on the BOM', () => {
   it('an unfinished sheet shows on the BOM and in the missing list', () => {
     const l = upsertShaft([], 's1', 'quote-ss-shaft', emptyShaftSpec())
     expect(resolveBom(l, 'in')[0]).toMatchObject({ description: 'Square shaft (spec sheet not finished)', qty: null })
-    const job = { ...emptyJob('2026-10-05', 'J'), customer: 'A', line: 'L' }
+    const job = { ...emptyJob('2026-10-05', 'J'), customer: 'A', contact: 'C', line: 'L' }
     expect(missingFor(job, l)[0]).toMatchObject({ label: 'Line 1 (shaft): Material', target: { lineId: 's1' } })
   })
 

@@ -34,7 +34,9 @@ export function JobStep({
     <div className="space-y-4">
       <div>
         <h3 className="text-xl font-semibold">1. Job</h3>
-        <p className="text-base text-muted-foreground">Who it's for and which line. Customer and line are needed to save.</p>
+        <p className="text-base text-muted-foreground">
+          Who it's for and which line. Customer and line are needed to save; the contact name before it goes to CS.
+        </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
@@ -45,6 +47,14 @@ export function JobStep({
           problem={showErrors && !job.customer.trim() ? 'Customer is needed.' : undefined}
         />
         <TextField id="job-plant" title="Plant / city" optional value={job.plant} onChange={(v) => onChange({ plant: v })} />
+        <TextField
+          id="job-contact"
+          title="Contact name"
+          value={job.contact}
+          onChange={(v) => onChange({ contact: v })}
+          helper="The person at the customer CS quotes to."
+          problem={showErrors && !job.contact.trim() ? 'Contact name is needed before this goes to CS.' : undefined}
+        />
         <TextField
           id="job-line"
           title="Line / conveyor ID"

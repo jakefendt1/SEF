@@ -343,7 +343,7 @@ export function OnetrackHome() {
             {STEPS.map((s, i) => {
               const current = s.id === step
               const done =
-                (s.id === 'job' && job.customer.trim() && job.line.trim()) ||
+                (s.id === 'job' && job.customer.trim() && job.contact.trim() && job.line.trim()) ||
                 (s.id === 'parts' && lines.length > 0) ||
                 (s.id === 'photos' && photos.length > 0)
               return (

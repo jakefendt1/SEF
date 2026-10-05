@@ -188,6 +188,7 @@ export function buildOnetrackPdf(args: OnetrackPdfArgs): { pdf: jsPDF; fileName:
       [
         ['Customer', job.customer.trim()],
         ['Plant / city', job.plant.trim()],
+        ['Contact', job.contact.trim()],
         ['Line / conveyor', job.line.trim()],
         ['Belt', belt],
         ['Prepared by', [job.preparedBy.trim(), job.date].filter(Boolean).join(', ')],

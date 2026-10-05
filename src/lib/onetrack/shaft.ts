@@ -93,7 +93,6 @@ export interface Sprockets {
 }
 
 export interface ShaftSpec {
-  contactName: string
   material: ShaftMaterial | null
   size: ShaftSizeId | null
   driveQty: number
@@ -124,7 +123,6 @@ const emptySprockets = (): Sprockets => ({ series: '', perShaft: null, pitchDia:
 
 export function emptyShaftSpec(): ShaftSpec {
   return {
-    contactName: '',
     material: null,
     size: null,
     driveQty: 0,
