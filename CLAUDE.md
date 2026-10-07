@@ -171,11 +171,14 @@ gets a switch for it, off for everyone) and wrap its routes in `ToolGate` in
 rules (`npx firebase-tools deploy --only firestore:rules`). A test fails if a
 collection is listed without its rule.
 
-**Email must be verified.** Access is granted by address, so an account
-registered with a colleague's email must not inherit their tools. The app
-holds unverified accounts on a "Verify your email" screen and the rules
-require `email_verified`. Profiles (`users/{uid}`) don't need it: they're
-written at sign-up, before the link is clicked.
+**No email verification.** It was tried on 2026-10-07 and dropped: Firebase's
+verification emails never reached Intralox inboxes, which locked everyone out.
+So the access list trusts the address an account was registered with. The gap
+that leaves: someone with an @intralox.com login could register a colleague's
+address before the colleague does and inherit any tools pre-approved for it.
+Check the Manage access list for names you don't expect. If verification comes
+back, it needs a sender Intralox mail accepts (a custom SMTP / domain in
+Firebase Authentication -> Templates), not the default one.
 
 **Beta is now just a chip.** `lib/betaAccess.ts` only labels a card "Beta";
 who can open it is the grant.

@@ -28,7 +28,7 @@ function friendlyError(msg: string): string {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading, init, signIn, createAccount, resetPassword, emailVerified } = useAuthStore()
+  const { user, loading, init, signIn, createAccount, resetPassword } = useAuthStore()
   const [mode, setMode] = useState<Mode>('signin')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -47,7 +47,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (user && !emailVerified) return <VerifyEmail email={user.email ?? ''} />
   if (user) return <>{children}</>
 
   function switchMode(next: Mode) {
@@ -226,75 +225,3 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   )
 }
 
-/**
- * Held here until the address is proven: tools are granted by email, so an
- * account someone registered with a colleague's address must not inherit
- * their access. firestore.rules checks the same thing.
- */
-function VerifyEmail({ email }: { email: string }) {
-  const { resendVerification, checkVerified, signOut } = useAuthStore()
-  const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState('')
-
-  const check = async () => {
-    setBusy(true)
-    setNote('')
-    try {
-      const ok = await checkVerified()
-      if (!ok) setNote("Not verified yet. Click the link in the email first, then tap this again.")
-    } catch {
-      setNote("Couldn't check. Make sure you're online and try again.")
-    }
-    setBusy(false)
-  }
-
-  const resend = async () => {
-    setBusy(true)
-    setNote('')
-    try {
-      await resendVerification()
-      setNote(`Sent. Check ${email}, including the junk folder.`)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      setNote(msg.includes('too-many-requests') ? 'Sent recently. Wait a minute, then try again.' : "Couldn't send it. Try again in a minute.")
-    }
-    setBusy(false)
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-        <img src={intraloxLogo} alt="Intralox" className="h-10 w-auto" />
-        <h1 className="text-xl font-semibold text-gray-900">Verify your email</h1>
-        <p className="text-base text-gray-700">
-          Tools are turned on by email address, so we need to check this one is yours: <strong>{email}</strong>.
-        </p>
-        <ol className="list-decimal pl-5 text-base text-gray-700 space-y-1">
-          <li>Tap <strong>Send me the link</strong>. (New accounts already have one waiting.)</li>
-          <li>Open the email and click the link. Check the junk folder if it isn't there.</li>
-          <li>Come back here and tap <strong>I've verified</strong>.</li>
-        </ol>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={resend}
-          className="w-full min-h-[48px] rounded-lg border border-gray-400 text-base font-medium text-gray-800 disabled:opacity-60"
-        >
-          Send me the link
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={check}
-          className="w-full min-h-[48px] rounded-lg bg-brand text-white text-base font-semibold disabled:opacity-60"
-        >
-          I've verified
-        </button>
-        {note && <p className="text-base text-gray-700" role="status">{note}</p>}
-        <button type="button" onClick={() => signOut()} className="w-full min-h-[44px] text-base text-brand underline">
-          Sign out
-        </button>
-      </div>
-    </div>
-  )
-}

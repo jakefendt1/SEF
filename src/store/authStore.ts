@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import {
   onAuthStateChanged,
-  sendEmailVerification,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -35,11 +34,6 @@ interface AuthStore {
   profile: UserProfile | null
   role: UserRole | null
   loading: boolean
-  /** Access is granted by email, so tools stay closed until the address is proven. */
-  emailVerified: boolean
-  resendVerification: () => Promise<void>
-  /** Re-read the account after the person clicks the link; true once verified. */
-  checkVerified: () => Promise<boolean>
   allUsers: UserProfile[]
   init: () => void
   signIn: (email: string, password: string) => Promise<void>
@@ -54,7 +48,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
   profile: null,
   role: null,
   loading: true,
-  emailVerified: false,
   allUsers: [],
 
   init() {
@@ -88,7 +81,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
           }
           await setDoc(profileRef, { ...profile, createdAt: serverTimestamp() })
         }
-        set({ user, profile, role: profile.role, loading: false, emailVerified: user.emailVerified })
+        set({ user, profile, role: profile.role, loading: false })
       } catch (err) {
         console.error('Profile load failed:', err)
         const profile: UserProfile = {
@@ -96,7 +89,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
           displayName: user.email!.split('@')[0],
           role: 'ic',
         }
-        set({ user, profile, role: 'ic', loading: false, emailVerified: user.emailVerified })
+        set({ user, profile, role: 'ic', loading: false })
       }
     })
   },
@@ -123,23 +116,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       ...profile,
       createdAt: serverTimestamp(),
     })
-    // Best effort: the verify screen offers "send again" if this one fails.
-    await sendEmailVerification(cred.user).catch((err) => console.error('[verify email]', err))
     // onAuthStateChanged fires and sets user/profile state
-  },
-
-  async resendVerification() {
-    if (auth.currentUser) await sendEmailVerification(auth.currentUser)
-  },
-
-  async checkVerified() {
-    const u = auth.currentUser
-    if (!u) return false
-    await u.reload()
-    // A fresh ID token carries email_verified, which firestore.rules checks.
-    await u.getIdToken(true)
-    set({ emailVerified: u.emailVerified })
-    return u.emailVerified
   },
 
   async resetPassword(email) {
@@ -158,6 +135,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   async signOut() {
     await fbSignOut(auth)
-    set({ user: null, profile: null, role: null, allUsers: [], emailVerified: false })
+    set({ user: null, profile: null, role: null, allUsers: [] })
   },
 }))

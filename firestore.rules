@@ -27,11 +27,11 @@ service cloud.firestore {
       return isAllowedUser() && request.auth.uid == uid;
     }
 
-    // Access is granted by email, so the email must be proven: someone who
-    // registers a colleague's address can't inherit their tools until they've
-    // clicked the link sent to that inbox.
+    // Email verification was tried (2026-10-07) and dropped: the Firebase
+    // emails didn't reach Intralox inboxes. Access relies on the domain check
+    // and the admin's grants.
     function isVerified() {
-      return isAllowedUser() && request.auth.token.email_verified == true;
+      return isAllowedUser();
     }
 
     function myEmail() {
