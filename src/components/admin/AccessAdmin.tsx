@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, Search, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { adminRows, isAdmin, toggleTool, ALL_TOOL_IDS, type AccessGrant, type AdminRow } from '@/lib/access'
+import { adminRows, isAdmin, isDefaultTool, toggleTool, ALL_TOOL_IDS, type AccessGrant, type AdminRow } from '@/lib/access'
 import { isAllowedSignupEmail } from '@/lib/allowedEmails'
 import { putAccess, subscribeAllAccess, subscribeAllProfiles, type ProfileRow } from '@/lib/firestoreAccess'
 import { TOOLS } from '@/lib/navigation'
@@ -154,7 +154,7 @@ export function AccessAdmin() {
           <ul className="space-y-3">
             {rows.map((row) => {
               const rowIsAdmin = isAdmin(row.email)
-              const all = rowIsAdmin || ALL_TOOL_IDS.every((id) => row.tools.includes(id))
+              const all = rowIsAdmin || ALL_TOOL_IDS.every((id) => isDefaultTool(id) || row.tools.includes(id))
               return (
                 <li key={row.email} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -192,9 +192,9 @@ export function AccessAdmin() {
                     {TOOLS.map((t) => (
                       <ToolSwitch
                         key={t.id}
-                        label={t.title}
-                        on={rowIsAdmin || row.tools.includes(t.id)}
-                        disabled={rowIsAdmin || saving === row.email}
+                        label={isDefaultTool(t.id) ? `${t.title} (everyone)` : t.title}
+                        on={rowIsAdmin || isDefaultTool(t.id) || row.tools.includes(t.id)}
+                        disabled={rowIsAdmin || isDefaultTool(t.id) || saving === row.email}
                         onChange={(on) => save(row, toggleTool(row.tools, t.id, on))}
                       />
                     ))}

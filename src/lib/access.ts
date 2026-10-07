@@ -48,12 +48,24 @@ export function accessDocId(email: string): string {
 export const ALL_TOOL_IDS: readonly string[] = TOOLS.map((t) => t.id)
 
 /**
+ * Tools every signed-in Intralox user gets, granted or not (Jake,
+ * 2026-10-07). Only tools that save nothing belong here: the rules don't know
+ * about defaults, so a tool with data would still be refused by Firestore.
+ */
+export const DEFAULT_TOOL_IDS: readonly string[] = ['belt-elongation']
+
+export function isDefaultTool(toolId: string): boolean {
+  return DEFAULT_TOOL_IDS.includes(toolId)
+}
+
+/**
  * The tools someone can use. Admins get all of them. Unknown ids in a grant
  * (a tool since removed) are ignored rather than trusted.
  */
 export function toolsFor(email: string | null | undefined, grant: Pick<AccessGrant, 'tools'> | null): string[] {
+  if (!email) return []
   if (isAdmin(email)) return [...ALL_TOOL_IDS]
-  return ALL_TOOL_IDS.filter((id) => grant?.tools.includes(id))
+  return ALL_TOOL_IDS.filter((id) => isDefaultTool(id) || grant?.tools.includes(id))
 }
 
 export function canUse(toolId: string, email: string | null | undefined, grant: Pick<AccessGrant, 'tools'> | null): boolean {

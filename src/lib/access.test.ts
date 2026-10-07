@@ -1,17 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { ADMIN_EMAILS, ALL_TOOL_IDS, TOOL_COLLECTIONS, accessDocId, adminRows, canUse, isAdmin, toggleTool, toolsFor } from './access'
+import { ADMIN_EMAILS, ALL_TOOL_IDS, DEFAULT_TOOL_IDS, TOOL_COLLECTIONS, accessDocId, adminRows, canUse, isAdmin, toggleTool, toolsFor } from './access'
 import { TOOLS } from './navigation'
 
 describe('access', () => {
-  it('A1: someone with no grant gets no tools', () => {
-    expect(toolsFor('new.person@intralox.com', null)).toEqual([])
+  it('A1: someone with no grant gets only the everyone tools (Belt Elongation)', () => {
+    expect(toolsFor('new.person@intralox.com', null)).toEqual(['belt-elongation'])
     expect(canUse('spiral-eval', 'new.person@intralox.com', null)).toBe(false)
+    expect(canUse('belt-elongation', 'new.person@intralox.com', { tools: [] })).toBe(true)
     expect(toolsFor(null, null)).toEqual([])
   })
 
   it('A2: a grant opens exactly its tools, in dashboard order, ignoring unknown ids', () => {
     const grant = { tools: ['onetrack', 'retired-tool', 'spiral-eval'] }
-    expect(toolsFor('someone@intralox.com', grant)).toEqual(['spiral-eval', 'onetrack'])
+    expect(toolsFor('someone@intralox.com', grant)).toEqual(['spiral-eval', 'belt-elongation', 'onetrack'])
     expect(canUse('aim-glide', 'someone@intralox.com', grant)).toBe(false)
   })
 
@@ -24,6 +25,10 @@ describe('access', () => {
   it('A4: every tool on the dashboard gets a switch; every data collection belongs to a real tool', () => {
     expect(ALL_TOOL_IDS).toEqual(TOOLS.map((t) => t.id))
     for (const id of Object.keys(TOOL_COLLECTIONS)) expect(ALL_TOOL_IDS).toContain(id)
+  })
+
+  it('A9: an everyone tool saves no data, so the rules never need to know about it', () => {
+    for (const id of DEFAULT_TOOL_IDS) expect(TOOL_COLLECTIONS[id]).toBeUndefined()
   })
 
   it('A5: grants are keyed by the lower-cased email', () => {
