@@ -19,6 +19,8 @@ export const ROUTES = {
   onetrack: '/onetrack',
   /** A saved BOM, reopened. */
   onetrackBom: '/onetrack/:id',
+  /** Manage access: admins only. */
+  admin: '/admin',
 } as const
 
 export interface ToolDef {
@@ -68,7 +70,6 @@ export const TOOLS: ToolDef[] = [
     icon: Layers,
   },
   {
-    // In beta: only the emails in lib/betaAccess.ts see it.
     id: 'onetrack',
     title: 'OneTrack BOM Builder',
     shortTitle: 'OneTrack BOM',
@@ -164,6 +165,10 @@ export function resolveNav(path: string): NavContext {
 
   if (p.startsWith(`${ROUTES.onetrack}/`)) {
     return { title: 'Saved BOM', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
+  }
+
+  if (p === ROUTES.admin) {
+    return { title: 'Manage access', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
   }
 
   // Unknown route: still give the user a way home.

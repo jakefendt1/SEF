@@ -7,6 +7,7 @@ import { runTitle } from '../../lib/tdBulkDensityRecord'
 import { assessmentTitle } from '../../lib/assessmentTitle'
 import { statusLabel } from '../../lib/statusLabels'
 import { ROUTES } from '../../lib/navigation'
+import { useMyTools } from '../../store/useMyTools'
 
 interface RecentItem {
   key: string
@@ -39,10 +40,13 @@ export function RecentActivity() {
 
   // Don't claim "nothing here yet" before every subscription has answered --
   // that reads as data loss to a user who knows they saved something.
-  if (!assessmentsLoaded || !roiLoaded || !runsLoaded) return null
+  const { tools, loaded: accessLoaded } = useMyTools()
+  const has = (id: string) => tools.includes(id)
+  if (!accessLoaded) return null
+  if ((has('spiral-eval') && !assessmentsLoaded) || (has('aim-glide') && !roiLoaded) || (has('td-bulk-density') && !runsLoaded)) return null
 
   const items: RecentItem[] = [
-    ...assessments.map((a) => ({
+    ...(has('spiral-eval') ? assessments : []).map((a) => ({
       key: `a-${a.id}`,
       href: `${ROUTES.spiralEvalList}/${a.id}`,
       title: assessmentTitle(a),
@@ -50,7 +54,7 @@ export function RecentActivity() {
       updatedAt: a.updatedAt,
       icon: ClipboardList,
     })),
-    ...calculations.map((c) => ({
+    ...(has('aim-glide') ? calculations : []).map((c) => ({
       key: `c-${c.id}`,
       href: ROUTES.aimGlide,
       title: c.name,
@@ -58,7 +62,7 @@ export function RecentActivity() {
       updatedAt: c.updatedAt,
       icon: Calculator,
     })),
-    ...runs.map((r) => ({
+    ...(has('td-bulk-density') ? runs : []).map((r) => ({
       key: `t-${r.id}`,
       href: `${ROUTES.tdBulkDensity}/${r.id}`,
       title: runTitle(r),

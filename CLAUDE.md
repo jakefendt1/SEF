@@ -152,15 +152,41 @@ says if the answer changed; it never writes.
 - Hold-down width default (1.0 in) and the customer PDF content are open items
   owned by Jake (plan §12).
 
+## Access: who can use which tool
+
+**Every tool is off until an admin turns it on.** Grants live at
+`access/{email}` in Firestore (`lib/access.ts`), edited on the Manage access
+page (`/admin`, admins only). Keyed by email, so someone can be approved
+before they sign up. Admins are `ADMIN_EMAILS` in `lib/access.ts` **and**
+`isAdmin()` in `firestore.rules` -- change both together (a test checks).
+
+**The rules enforce it, not just the dashboard.** Each tool's collection
+under `users/{uid}` needs `hasTool('<tool id>')`. A hidden tile alone would
+only hide a button.
+
+**Adding a tool:** add it to `TOOLS` in `lib/navigation.ts` (Manage access
+gets a switch for it, off for everyone) and wrap its routes in `ToolGate` in
+`App.tsx`. If it saves data, add its collection to `TOOL_COLLECTIONS` in
+`lib/access.ts` and a `hasTool` match in `firestore.rules`, then deploy the
+rules (`npx firebase-tools deploy --only firestore:rules`). A test fails if a
+collection is listed without its rule.
+
+**Email must be verified.** Access is granted by address, so an account
+registered with a colleague's email must not inherit their tools. The app
+holds unverified accounts on a "Verify your email" screen and the rules
+require `email_verified`. Profiles (`users/{uid}`) don't need it: they're
+written at sign-up, before the link is clicked.
+
+**Beta is now just a chip.** `lib/betaAccess.ts` only labels a card "Beta";
+who can open it is the grant.
+
 ## OneTrack BOM Builder
 
 Built from `../Onetrack/CURSOR_BUILD_PLAN.md` (the spec). Its §8 tests are the
 contract and live in `lib/onetrack/*.test.ts`.
 
-**It's in beta.** `lib/betaAccess.ts` lists who can see it (Jake and Jeremy
-Shall). Everyone else gets no dashboard card and "not found" at `/onetrack`.
-Launching = deleting the `onetrack` entry and pushing. Don't remove the gate
-for anyone else's convenience before Jeremy signs off.
+**It's in beta.** It carries a "Beta" chip (`lib/betaAccess.ts`); who can
+open it is set in Manage access like every other tool.
 
 **Part numbers are trusted as printed** in the OneTrack menu (Jake,
 2026-10-05) -- including the p.11 CleanLock roller E7/L6 codes, which pair the

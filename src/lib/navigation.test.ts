@@ -62,6 +62,10 @@ describe('resolveNav', () => {
     expect(Object.values(ROUTES)).toContain('/onetrack/:id')
   })
 
+  it('titles Manage access and sends it back to the dashboard', () => {
+    expect(resolveNav('/admin')).toEqual({ title: 'Manage access', backHref: '/', backLabel: 'Tools' })
+  })
+
   it('still offers a way home from an unknown route', () => {
     expect(resolveNav('/nope/nothing-here').backHref).toBe('/')
   })

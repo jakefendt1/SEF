@@ -27,23 +27,58 @@ service cloud.firestore {
       return isAllowedUser() && request.auth.uid == uid;
     }
 
+    // Access is granted by email, so the email must be proven: someone who
+    // registers a colleague's address can't inherit their tools until they've
+    // clicked the link sent to that inbox.
+    function isVerified() {
+      return isAllowedUser() && request.auth.token.email_verified == true;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    // Admins: see and change everyone's access. Mirrors ADMIN_EMAILS in
+    // src/lib/access.ts -- change both together.
+    function isAdmin() {
+      return isVerified() && myEmail() in ['jacob.fendt@intralox.com'];
+    }
+
+    // A tool's data is reachable only with that tool granted in access/{email}
+    // (or as an admin). Tool ids match TOOLS in src/lib/navigation.ts.
+    function hasTool(tool) {
+      return isAdmin() || (
+        isVerified()
+        && exists(/databases/$(database)/documents/access/$(myEmail()))
+        && tool in get(/databases/$(database)/documents/access/$(myEmail())).data.tools
+      );
+    }
+
+    match /access/{email} {
+      allow read: if isAdmin() || (isVerified() && email == myEmail());
+      allow write: if isAdmin();
+    }
+
     match /users/{uid} {
+      // Profiles are written at sign-up, before the email is verified.
       allow read, write: if isOwner(uid);
+      // The admin's user list in Manage access.
+      allow read: if isAdmin();
 
       match /assessments/{assessmentId} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) && hasTool('spiral-eval');
       }
 
       match /roiCalculations/{calcId} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) && hasTool('aim-glide');
       }
 
       match /tdBulkDensityRuns/{runId} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) && hasTool('td-bulk-density');
       }
 
       match /onetrackBoms/{bomId} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) && hasTool('onetrack');
       }
     }
 

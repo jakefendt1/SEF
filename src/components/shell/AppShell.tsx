@@ -10,6 +10,8 @@ import { useTdBulkDensityStore } from '../../store/tdBulkDensityStore'
 import { migrateLegacyAssessmentsForUser } from '../../lib/migrateLegacyAssessments'
 import { importLegacyRoiCalculationsForUser } from '../../lib/importLegacyRoiCalculations'
 import { resolveNav } from '../../lib/navigation'
+import { useAccessStore } from '../../store/accessStore'
+import { useMyTools } from '../../store/useMyTools'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,36 +32,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const subscribeTd = useTdBulkDensityStore((s) => s.subscribe)
   const unsubscribeTd = useTdBulkDensityStore((s) => s.unsubscribe)
   const roiImportDone = useRef(false)
+  const subscribeAccess = useAccessStore((s) => s.subscribe)
+  const unsubscribeAccess = useAccessStore((s) => s.unsubscribe)
+  const { tools } = useMyTools()
+  const hasSpiral = tools.includes('spiral-eval')
+  const hasRoi = tools.includes('aim-glide')
+  const hasTd = tools.includes('td-bulk-density')
+
+  // The person's own access grant, live: a switch flipped in Manage access
+  // shows up here without a refresh.
+  useEffect(() => {
+    const email = user?.email
+    if (!email) return
+    subscribeAccess(email)
+    return () => unsubscribeAccess()
+  }, [user?.email, subscribeAccess, unsubscribeAccess])
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [location] = useLocation()
   const nav = resolveNav(location)
 
+  // Each tool's saved data is subscribed only for people who can use that tool
+  // (firestore.rules refuses it otherwise).
   useEffect(() => {
     const uid = user?.uid
-    if (!uid) return
+    if (!uid || !hasSpiral) return
     migrateLegacyAssessmentsForUser(uid)
       .catch((err) => console.error('[migrateLegacyAssessments]', err))
       .finally(() => subscribe(uid))
     return () => unsubscribe()
-  }, [user?.uid, subscribe, unsubscribe])
+  }, [user?.uid, hasSpiral, subscribe, unsubscribe])
 
   // ROI calculations are subscribed at the shell, not inside the calculator
   // page, so the dashboard can show recent activity across both tools without
   // the user having visited /aim-glide first.
   useEffect(() => {
     const uid = user?.uid
-    if (!uid) return
+    if (!uid || !hasRoi) return
     subscribeRoi(uid)
     return () => unsubscribeRoi()
-  }, [user?.uid, subscribeRoi, unsubscribeRoi])
+  }, [user?.uid, hasRoi, subscribeRoi, unsubscribeRoi])
 
   // Saved bulk density runs: subscribed here for the same reason.
   useEffect(() => {
     const uid = user?.uid
-    if (!uid) return
+    if (!uid || !hasTd) return
     subscribeTd(uid)
     return () => unsubscribeTd()
-  }, [user?.uid, subscribeTd, unsubscribeTd])
+  }, [user?.uid, hasTd, subscribeTd, unsubscribeTd])
 
   // Import any pre-Firestore calculations left in localStorage. Deliberately
   // waits for `roiLoaded` -- the importer dedupes against what's already in
@@ -67,12 +86,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // everything.
   useEffect(() => {
     const uid = user?.uid
-    if (!uid || !roiLoaded || roiImportDone.current) return
+    if (!uid || !hasRoi || !roiLoaded || roiImportDone.current) return
     roiImportDone.current = true
     importLegacyRoiCalculationsForUser(uid, useRoiCalculationsStore.getState().calculations).catch(
       (err) => console.error('[importLegacyRoiCalculations]', err),
     )
-  }, [user?.uid, roiLoaded])
+  }, [user?.uid, hasRoi, roiLoaded])
 
   return (
     <div className="min-h-screen bg-gray-50">

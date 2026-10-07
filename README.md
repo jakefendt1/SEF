@@ -98,7 +98,8 @@ describing the same thing, drifting apart.
 | OneTrack categories and filter chips | `lib/onetrack/categories.ts` | `catalog.test.ts` asserts every chip key exists on every item |
 | Wearstrip profiles and "quote as" options | `lib/onetrack/profiles.ts` (colors and frame sizes come from the catalog) | `catalog.test.ts` checks every picture exists under `public/` |
 | What's on a OneTrack BOM, in what order | `lib/onetrack/bom.ts` → `resolveBom` | The panel, Review, PDF and email text all call it |
-| Which tools are in beta, and for whom | `lib/betaAccess.ts` | `betaAccess.test.ts` |
+| Who can use which tool | `access/{email}` in Firestore, edited at `/admin`; logic in `lib/access.ts`; enforced in `firestore.rules` | `access.test.ts` (incl. that the rules' admin list and tool rules match) |
+| Which tools show a Beta chip | `lib/betaAccess.ts` | `betaAccess.test.ts` |
 | Brand colour | `--brand` in `index.css` | No `blue-900`/`#1e3a5f` literals in components |
 | Stacking order | `--z-app-header` / `--z-page-sticky` / `--z-overlay` | No ad-hoc `z-40` |
 
@@ -145,6 +146,8 @@ progress; anything they genuinely cannot measure gets marked
   `lib/tdBulkDensityRecord.ts`: all inputs (canonical units), the units they
   were typed in, the engine version and a results snapshot
 
+- `access/{email}` — which tools that person can use (`AccessGrant` in
+  `lib/access.ts`); admins only can write it
 - `users/{uid}/onetrackBoms/{id}` — see `StoredOnetrackBom` in
   `lib/onetrackRecord.ts`: the job, the lines as chosen (item ids and
   quantities, or the wearstrip worksheet in canonical inches), and a snapshot
