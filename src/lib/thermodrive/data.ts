@@ -3,10 +3,8 @@
 // 2.0.260929.html, APP_VERSION 0.65, "PRODUCT DATA & RULES"). Values are his,
 // verbatim; lengths in mm unless a name says otherwise.
 //
-// STATUS (2026-10-07): groundwork for the shared belt engine (plan step 2).
-// Not used by any screen yet. Next: geometry (flight segments, splice,
-// V-guides, sections, ThermoLace) and validateBelt(), then wiring into the
-// Bulk Density calculator and the Belt Configurator tile.
+// The engine: belt.ts (the model), geometry.ts (his geometry functions),
+// validate.ts (his flags as warnings). parity.test.ts holds it to his page.
 
 export const IN = 25.4
 

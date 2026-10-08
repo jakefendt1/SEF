@@ -1,0 +1,557 @@
+{
+  "source": "Thermodrive Visualizer 2.0.260929.html (v0.65)",
+  "results": [
+    {
+      "name": "8050 plain, 100 rows, 4-row spacing",
+      "sswPitch": null,
+      "finals": [
+        {
+          "nF": 25,
+          "spliceFlag": false,
+          "removedRow": null,
+          "finalGap": 198.7296000000007
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              31.75,
+              577.85
+            ]
+          ],
+          "over": false
+        }
+      ],
+      "varWarn": [
+        false
+      ],
+      "msi": {
+        "ft": 60
+      },
+      "vgPos": [],
+      "vgWarn": false,
+      "drive": [
+        [
+          0,
+          609.6
+        ]
+      ],
+      "lace": {
+        "mode": "between",
+        "laceMM": 471.98279999999994,
+        "rows": 18
+      },
+      "sections": [
+        {
+          "rows": [
+            34,
+            33,
+            33
+          ],
+          "err": false
+        },
+        {
+          "rows": [
+            60,
+            40
+          ],
+          "err": false
+        },
+        {
+          "rows": [
+            100
+          ],
+          "err": false
+        },
+        {
+          "rows": [
+            50,
+            50
+          ],
+          "err": false
+        },
+        {
+          "rows": [
+            50,
+            49
+          ],
+          "err": true
+        }
+      ]
+    },
+    {
+      "name": "8050 flight within 1 row of the splice (98 rows)",
+      "sswPitch": 50,
+      "finals": [
+        {
+          "nF": 24,
+          "spliceFlag": true,
+          "removedRow": 98,
+          "finalGap": 298.09439999999995
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              31.75,
+              577.85
+            ]
+          ],
+          "over": false
+        }
+      ],
+      "varWarn": [
+        true
+      ],
+      "msi": {
+        "ft": 50
+      },
+      "vgPos": [],
+      "vgWarn": false,
+      "drive": [
+        [
+          0,
+          609.6
+        ]
+      ],
+      "lace": {
+        "mode": "between",
+        "laceMM": 471.98279999999994,
+        "rows": 18
+      },
+      "sections": [
+        {
+          "rows": [
+            25,
+            25,
+            24,
+            24
+          ],
+          "err": false
+        }
+      ]
+    },
+    {
+      "name": "8050 flight on the splice, two variations",
+      "sswPitch": null,
+      "finals": [
+        {
+          "nF": 27,
+          "spliceFlag": false,
+          "removedRow": null,
+          "finalGap": 149.04719999999998
+        },
+        {
+          "nF": 26,
+          "spliceFlag": true,
+          "removedRow": 81,
+          "finalGap": 298.09439999999995
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              31.75,
+              425.45
+            ]
+          ],
+          "over": false
+        },
+        {
+          "segs": [
+            [
+              40,
+              115.55
+            ],
+            [
+              140.55,
+              216.10000000000002
+            ],
+            [
+              241.10000000000002,
+              316.65000000000003
+            ],
+            [
+              341.65000000000003,
+              417.20000000000005
+            ]
+          ],
+          "over": false
+        }
+      ],
+      "varWarn": [
+        false,
+        false
+      ],
+      "msi": {
+        "ft": 40
+      },
+      "vgPos": [],
+      "vgWarn": false,
+      "drive": [
+        [
+          0,
+          457.2
+        ]
+      ],
+      "lace": {
+        "mode": "between",
+        "laceMM": 471.98279999999994,
+        "rows": 18
+      },
+      "sections": [
+        {
+          "rows": [
+            30,
+            30,
+            21
+          ],
+          "err": false
+        }
+      ]
+    },
+    {
+      "name": "8050 1 in polyurethane sidewall (25 mm pitch), flights too close",
+      "sswPitch": 25,
+      "finals": [
+        {
+          "nF": 29,
+          "spliceFlag": true,
+          "removedRow": 60,
+          "finalGap": 198.72959999999998
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              30,
+              340
+            ]
+          ],
+          "over": false
+        }
+      ],
+      "varWarn": [
+        true
+      ],
+      "msi": {
+        "ft": 100
+      },
+      "vgPos": [],
+      "vgWarn": false,
+      "drive": [
+        [
+          0,
+          400
+        ]
+      ],
+      "lace": {
+        "mode": "between",
+        "laceMM": 273.2532,
+        "rows": 10
+      },
+      "sections": [
+        {
+          "rows": [
+            60
+          ],
+          "err": false
+        }
+      ]
+    },
+    {
+      "name": "8026 even notches that don't fit",
+      "sswPitch": null,
+      "finals": [
+        {
+          "nF": 24,
+          "spliceFlag": false,
+          "removedRow": null,
+          "finalGap": 127.50800000000001
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              31.75,
+              29.53
+            ],
+            [
+              54.53,
+              52.31
+            ],
+            [
+              77.31,
+              75.09
+            ],
+            [
+              100.09,
+              97.87
+            ],
+            [
+              122.87,
+              120.65
+            ]
+          ],
+          "over": true
+        }
+      ],
+      "varWarn": [
+        true
+      ],
+      "msi": {
+        "ft": 60
+      },
+      "vgPos": [],
+      "vgWarn": false,
+      "drive": [
+        [
+          0,
+          152.4
+        ]
+      ],
+      "lace": {
+        "mode": "between",
+        "laceMM": 446.278,
+        "rows": 35
+      },
+      "sections": [
+        {
+          "rows": [
+            18,
+            17,
+            17,
+            17,
+            17,
+            17,
+            17
+          ],
+          "err": false
+        }
+      ]
+    },
+    {
+      "name": "8126 manual notches with mixed heights",
+      "sswPitch": null,
+      "finals": [
+        {
+          "nF": 6,
+          "spliceFlag": false,
+          "removedRow": null,
+          "finalGap": 178.5112
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              20,
+              120
+            ],
+            [
+              140,
+              260
+            ],
+            [
+              290,
+              440
+            ]
+          ],
+          "over": true
+        }
+      ],
+      "varWarn": [
+        true
+      ],
+      "msi": {
+        "ft": 50
+      },
+      "vgPos": [],
+      "vgWarn": false,
+      "drive": [
+        [
+          0,
+          450
+        ]
+      ],
+      "lace": {
+        "mode": "between",
+        "laceMM": 191.262,
+        "rows": 15
+      },
+      "sections": [
+        {
+          "rows": [],
+          "err": true
+        }
+      ]
+    },
+    {
+      "name": "8140 dual lug, 3 V-guides by channel, 2 in sidewalls",
+      "sswPitch": 40,
+      "finals": [
+        {
+          "nF": 80,
+          "spliceFlag": false,
+          "removedRow": null,
+          "finalGap": 197.86599999999999
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              50,
+              366
+            ],
+            [
+              396,
+              712
+            ]
+          ],
+          "over": false
+        }
+      ],
+      "varWarn": [
+        true
+      ],
+      "msi": {
+        "ft": 50
+      },
+      "vgPos": [
+        19.202399999999997,
+        332.2072,
+        742.7976
+      ],
+      "vgWarn": true,
+      "drive": [
+        [
+          36.44900000000004,
+          112.64900000000003
+        ],
+        [
+          649.351,
+          725.551
+        ]
+      ],
+      "lace": {
+        "mode": "onFeature",
+        "laceMM": 474.8784,
+        "rows": 23
+      },
+      "sections": [
+        {
+          "rows": [
+            200,
+            200
+          ],
+          "err": false
+        },
+        {
+          "rows": [
+            76,
+            76,
+            76,
+            76,
+            96
+          ],
+          "err": false
+        }
+      ]
+    },
+    {
+      "name": "8140 single lug, 4 V-guides in pairs, inner wider than outer",
+      "sswPitch": null,
+      "finals": [],
+      "segs": [],
+      "varWarn": [],
+      "msi": {
+        "ft": 100
+      },
+      "vgPos": [
+        167.5,
+        157.5,
+        477.5,
+        467.5
+      ],
+      "vgWarn": true,
+      "drive": [
+        [
+          279.4,
+          355.6
+        ]
+      ],
+      "lace": {
+        "mode": "onFeature",
+        "laceMM": 316.5856,
+        "rows": 15
+      },
+      "sections": [
+        {
+          "rows": [
+            77
+          ],
+          "err": false
+        }
+      ]
+    },
+    {
+      "name": "8140 2 V-guides by centerline, too close to flights",
+      "sswPitch": null,
+      "finals": [
+        {
+          "nF": 12,
+          "spliceFlag": true,
+          "removedRow": 50.5,
+          "finalGap": 237.4392
+        }
+      ],
+      "segs": [
+        {
+          "segs": [
+            [
+              20,
+              480
+            ]
+          ],
+          "over": false
+        }
+      ],
+      "varWarn": [
+        false
+      ],
+      "msi": {
+        "ft": 100
+      },
+      "vgPos": [
+        16.5024,
+        483.4976
+      ],
+      "vgWarn": true,
+      "drive": [
+        [
+          211.9,
+          288.1
+        ]
+      ],
+      "lace": {
+        "mode": "onFeature",
+        "laceMM": 316.5856,
+        "rows": 15
+      },
+      "sections": [
+        {
+          "rows": [
+            50
+          ],
+          "err": false
+        }
+      ]
+    }
+  ]
+}

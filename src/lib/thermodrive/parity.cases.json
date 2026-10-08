@@ -1,0 +1,98 @@
+{
+  "note": "Belts run through Patrick's v0.65 page by scripts/thermodrive-parity.mjs; his answers are in parity.patrick.json. Lengths mm, his field names.",
+  "cases": [
+    {
+      "name": "8050 plain, 100 rows, 4-row spacing",
+      "series": "8050", "style": "FLAT TOP E (7 MM)", "material": "POLYURETHANE", "color": "BLUE",
+      "width": 609.6, "rows": 100, "flightOn": true, "flightRows": 4, "var2": false,
+      "vars": [{ "startRow": 2, "indentL": 31.75, "indentR": 31.75, "height": 76.2 }],
+      "sswOn": false, "sswHin": 2, "sswInset": 31.75, "sswBoth": true,
+      "vgOn": false, "vgCount": 2, "vgMode": "channel",
+      "repairLength": 914.4,
+      "sections": [{ "mode": "count", "count": 3 }, { "mode": "standard", "std": 60, "last": false }, { "mode": "standard", "std": 60, "last": true }, { "mode": "manual", "text": "50, 50" }, { "mode": "manual", "text": "50, 49" }]
+    },
+    {
+      "name": "8050 flight within 1 row of the splice (98 rows)",
+      "series": "8050", "style": "FLAT TOP E (7 MM)", "material": "POLYURETHANE", "color": "BLUE",
+      "width": 609.6, "rows": 98, "flightOn": true, "flightRows": 4, "var2": false,
+      "vars": [{ "startRow": 2, "indentL": 31.75, "indentR": 31.75, "height": 101.6 }],
+      "sswOn": true, "sswHin": 4, "sswInset": 12.7, "sswBoth": true,
+      "vgOn": false, "vgCount": 2, "vgMode": "channel",
+      "repairLength": 914.4,
+      "sections": [{ "mode": "count", "count": 4 }]
+    },
+    {
+      "name": "8050 flight on the splice, two variations",
+      "series": "8050", "style": "FLAT TOP E (7 MM)", "material": "DURA", "color": "WHITE",
+      "width": 457.2, "rows": 81, "flightOn": true, "flightRows": 3, "var2": true,
+      "vars": [
+        { "startRow": 2, "indentL": 31.75, "indentR": 31.75, "height": 50.8 },
+        { "startRow": 3, "indentL": 40, "indentR": 40, "height": 152.4, "notchOn": true, "even": true, "notchCount": 3, "notchW": 25 }
+      ],
+      "sswOn": false, "sswHin": 2, "sswInset": 31.75, "sswBoth": true,
+      "vgOn": false, "vgCount": 2, "vgMode": "channel",
+      "repairLength": 914.4,
+      "sections": [{ "mode": "standard", "std": 30, "last": false }]
+    },
+    {
+      "name": "8050 1 in polyurethane sidewall (25 mm pitch), flights too close",
+      "series": "8050", "style": "FLAT TOP E (7 MM)", "material": "POLYURETHANE", "color": "BLUE",
+      "width": 400, "rows": 60, "flightOn": true, "flightRows": 2, "var2": false,
+      "vars": [{ "startRow": 2, "indentL": 30, "indentR": 60, "height": 25.4 }],
+      "sswOn": true, "sswHin": 1, "sswInset": 10, "sswBoth": true,
+      "vgOn": false, "vgCount": 2, "vgMode": "channel",
+      "repairLength": 500,
+      "sections": [{ "mode": "count", "count": 1 }]
+    },
+    {
+      "name": "8026 even notches that don't fit",
+      "series": "8026", "style": "FLAT TOP E (6 MM)", "material": "COLD USE", "color": "WHITE",
+      "width": 152.4, "rows": 120, "flightOn": true, "flightRows": 5, "var2": false,
+      "vars": [{ "startRow": 2, "indentL": 31.75, "indentR": 31.75, "height": 50.8, "notchOn": true, "even": true, "notchCount": 4, "notchW": 25 }],
+      "sswOn": false, "sswHin": 2, "sswInset": 31.75, "sswBoth": true,
+      "vgOn": false, "vgCount": 2, "vgMode": "channel",
+      "repairLength": 914.4,
+      "sections": [{ "mode": "count", "count": 7 }]
+    },
+    {
+      "name": "8126 manual notches with mixed heights",
+      "series": "8126", "style": "FLAT TOP (6 MM)", "material": "POLYURETHANE", "color": "BLUE",
+      "width": 450, "rows": 37, "flightOn": true, "flightRows": 6, "var2": false,
+      "vars": [{ "startRow": 2, "indentL": 20, "indentR": 20, "height": 76.2, "notchOn": true, "even": false, "notchCount": 2, "flightWidths": [100, 120, 150], "notchWidths": [20, 30], "flightHeights": [76.2, 101.6, 50.8] }],
+      "sswOn": false, "sswHin": 2, "sswInset": 31.75, "sswBoth": true,
+      "vgOn": false, "vgCount": 2, "vgMode": "channel",
+      "repairLength": 400,
+      "sections": [{ "mode": "manual", "text": "20, 17.5" }]
+    },
+    {
+      "name": "8140 dual lug, 3 V-guides by channel, 2 in sidewalls",
+      "series": "8140", "style": "FLAT TOP E DUAL LUG (10.5 MM)", "material": "DURA", "color": "BLUE",
+      "width": 762, "rows": 400, "flightOn": true, "flightRows": 5, "var2": false,
+      "vars": [{ "startRow": 2.5, "indentL": 50, "indentR": 50, "height": 101.6, "notchOn": true, "even": true, "notchCount": 1, "notchW": 30 }],
+      "sswOn": true, "sswHin": 2, "sswInset": 12.7, "sswBoth": true,
+      "vgOn": true, "vgCount": 3, "vgMode": "channel", "vgIndentL": 12.7, "vgIndentR": 12.7, "vgChannels": [300, 25.4],
+      "repairLength": 914.4,
+      "sections": [{ "mode": "count", "count": 2 }, { "mode": "standard", "std": 76, "last": true }]
+    },
+    {
+      "name": "8140 single lug, 4 V-guides in pairs, inner wider than outer",
+      "series": "8140", "style": "FLAT TOP E (10.5 MM)", "material": "POLYURETHANE", "color": "WHITE",
+      "width": 635, "rows": 77, "flightOn": false, "flightRows": 4, "var2": false,
+      "vars": [{ "startRow": 2.5, "indentL": 31.75, "indentR": 31.75, "height": 0 }],
+      "sswOn": false, "sswHin": 2, "sswInset": 31.75, "sswBoth": true,
+      "vgOn": true, "vgCount": 4, "vgMode": "channel", "vgOuterSp": 300, "vgInnerSp": 320,
+      "repairLength": 600,
+      "sections": [{ "mode": "count", "count": 1 }]
+    },
+    {
+      "name": "8140 2 V-guides by centerline, too close to flights",
+      "series": "8140", "style": "EMBED DIAMOND TOP E (11.5 MM)", "material": "POLYURETHANE", "color": "BLUE",
+      "width": 500, "rows": 50, "flightOn": true, "flightRows": 4, "var2": false,
+      "vars": [{ "startRow": 2.5, "indentL": 20, "indentR": 20, "height": 25.4 }],
+      "sswOn": false, "sswHin": 2, "sswInset": 31.75, "sswBoth": true,
+      "vgOn": true, "vgCount": 2, "vgMode": "centerline", "vgIndentL": 10, "vgIndentR": 10,
+      "repairLength": 600,
+      "sections": [{ "mode": "count", "count": 1 }]
+    }
+  ]
+}
