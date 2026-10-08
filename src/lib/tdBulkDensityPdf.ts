@@ -55,7 +55,8 @@ export interface TdPdfArgs {
   /** e.g. "Kettle chips (typical range — confirm with customer)" or "Entered / measured". */
   densitySource: string
   images?: { pocket3d?: PdfImage; side?: PdfImage; end?: PdfImage }
-  compare?: { a: TdComputed; images?: { a?: PdfImage; b?: PdfImage } }
+  /** A and B side by side; B defaults to this result. */
+  compare?: { a: TdComputed; b?: TdComputed; images?: { a?: PdfImage; b?: PdfImage } }
   date?: Date
 }
 
@@ -365,12 +366,13 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
   // ------------------------------------------------------------------ A / B
   if (args.compare) {
     const a = args.compare.a
-    const c = compareRuns(a, r, sys)
+    const b = args.compare.b ?? r
+    const c = compareRuns(a, b, sys)
     heading('A / B comparison', 40)
     paragraph(c.summary, 10.5, INK)
     if (c.changes.length > 1) for (const ch of c.changes) paragraph(`•  ${ch}`, 9, GRAY)
-    const table = compareTable(a, r, sys)
-    const names = compareNames(a, r, sys)
+    const table = compareTable(a, b, sys)
+    const names = compareNames(a, b, sys)
     rows([
       ['', `${names.a}  |  ${names.b}`],
       ...table.results.map((row): [string, string] => [row.label, `${row.a}  |  ${row.b}${row.delta ? `   (${row.delta})` : ''}`]),

@@ -1,7 +1,8 @@
-// Side-by-side compare (plan §7.5): A is a pinned run, B is whatever the inputs
-// say now. Every input and headline result in two columns, with what changed
+// Side-by-side compare (plan §7.5): two runs, A and B. The inputs edit one
+// side at a time (tap A or B to switch); the other keeps its numbers. Remove
+// either side to go back to one run. Every input and headline result in two columns, with what changed
 // and whether it helped -- e.g. a 24 in vs a 30 in belt for the same product.
-import { X } from 'lucide-react'
+import { Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { compareNames, compareRuns, compareTable, type CompareRow } from '@/lib/tdBulkDensity/compare'
 import type { TdComputed } from '@/lib/tdBulkDensity/compute'
@@ -35,28 +36,49 @@ function Rows({ rows, showDelta }: { rows: CompareRow[]; showDelta: boolean }) {
 export function CompareStrip({
   a,
   b,
+  editing,
   system,
-  onUnpin,
-  onRestoreA,
+  onEdit,
+  onRemove,
 }: {
-  a: TdComputed
+  a: TdComputed | null
   b: TdComputed | null
+  editing: 'A' | 'B'
   system: UnitSystem
-  onUnpin: () => void
-  onRestoreA: () => void
+  onEdit: (side: 'A' | 'B') => void
+  onRemove: (side: 'A' | 'B') => void
 }) {
-  const ready = !!(b && b.throughput && a.throughput)
-  const c = ready ? compareRuns(a, b!, system) : null
-  const table = ready ? compareTable(a, b!, system) : null
-  const names = compareNames(a, ready ? b : null, system)
+  const ready = !!(a?.throughput && b?.throughput)
+  const c = ready ? compareRuns(a!, b!, system) : null
+  const table = ready ? compareTable(a!, b!, system) : null
+  const names = ready ? compareNames(a!, b, system) : { a: 'A', b: 'B' }
   return (
     <div className="rounded-xl border-2 border-brand/40 bg-blue-50 px-4 py-3 space-y-3" aria-live="polite">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-brand uppercase tracking-wide">Side by side: A (pinned) vs B (now)</p>
-        <Button variant="ghost" size="icon" className="size-11 -mt-2 -mr-2" onClick={onUnpin} aria-label="Stop comparing">
-          <X className="size-5" />
-        </Button>
+      <p className="text-sm font-semibold text-brand uppercase tracking-wide">Side by side</p>
+      <div className="grid grid-cols-2 gap-2">
+        {(['A', 'B'] as const).map((side) => {
+          const on = editing === side
+          return (
+            <div key={side} className={cn('rounded-lg border-2 bg-white p-2 space-y-1', on ? 'border-brand' : 'border-border')}>
+              <p className="text-base font-semibold truncate">{side === 'A' ? names.a : names.b}</p>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  variant={on ? 'default' : 'outline'}
+                  className={cn('min-h-[44px] flex-1', on && 'bg-brand hover:bg-brand-hover')}
+                  aria-pressed={on}
+                  onClick={() => onEdit(side)}
+                >
+                  <Pencil className="size-4" /> {on ? 'Editing' : `Edit ${side}`}
+                </Button>
+                <Button variant="ghost" className="min-h-[44px] px-2" onClick={() => onRemove(side)} aria-label={`Remove ${side}`}>
+                  <X className="size-4" /> Remove
+                </Button>
+              </div>
+            </div>
+          )
+        })}
       </div>
+      <p className="text-sm text-muted-foreground">The inputs change {editing}. Tap the other side to change it instead.</p>
       {c && table ? (
         <>
           <p className="text-base font-semibold leading-snug">{c.summary}</p>
@@ -90,12 +112,9 @@ export function CompareStrip({
         </>
       ) : (
         <p className="text-base text-muted-foreground">
-          Now change what you want to compare (say the belt width) — B updates as you go. B needs a result to compare.
+          Change what you want to compare (say the belt width); the side you're editing updates as you go. Both sides need a result to compare.
         </p>
       )}
-      <button type="button" onClick={onRestoreA} className="min-h-[44px] text-base font-semibold text-brand underline">
-        Go back to A's inputs
-      </button>
     </div>
   )
 }

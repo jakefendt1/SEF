@@ -124,7 +124,8 @@ export function TdBulkDensityHome() {
   const [show3D, setShow3D] = useState(true)
   const [tab, setTab] = useState('side')
   const [layers, setLayers] = useState<LayerState>(DEFAULT_LAYERS)
-  const [pinned, setPinned] = useState<{ result: TdComputed; form: TdForm } | null>(null)
+  // Side-by-side compare: `other` is the side the inputs aren't editing right now.
+  const [compare, setCompare] = useState<{ other: { result: TdComputed; form: TdForm }; editing: 'A' | 'B' } | null>(null)
 
   const [meta, setMeta] = useState<RunMeta>(EMPTY_META)
   const [loadedRun, setLoadedRun] = useState<StoredTdRun | null>(null)
@@ -140,10 +141,11 @@ export function TdBulkDensityHome() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
 
-  const canvasB = useRef<HTMLCanvasElement | null>(null)
-  const canvasA = useRef<HTMLCanvasElement | null>(null)
-  const setCanvasB = useCallback((c: HTMLCanvasElement | null) => (canvasB.current = c), [])
-  const setCanvasA = useCallback((c: HTMLCanvasElement | null) => (canvasA.current = c), [])
+  // The live run's 3D canvas and, when comparing, the other side's.
+  const canvasLive = useRef<HTMLCanvasElement | null>(null)
+  const canvasOther = useRef<HTMLCanvasElement | null>(null)
+  const setCanvasLive = useCallback((c: HTMLCanvasElement | null) => (canvasLive.current = c), [])
+  const setCanvasOther = useCallback((c: HTMLCanvasElement | null) => (canvasOther.current = c), [])
 
   // ---- Open a saved run from the URL, once per id. Reading never writes:
   // the run is recomputed with today's engine and compared, nothing more.
@@ -195,9 +197,12 @@ export function TdBulkDensityHome() {
   const stepMissing = (id: StepId) => missing.filter((m) => m.step === id).length
   const firstMissingStep = missing.length ? STEPS.findIndex((s) => s.id === missing[0].step) : -1
   const nonInfo = result ? result.warnings.filter((w) => w.severity !== 'info').length : 0
+  // A is always the left column, B the right, whichever one the inputs are editing.
+  const sideA = compare ? (compare.editing === 'A' ? shown : compare.other.result) : null
+  const sideB = compare ? (compare.editing === 'B' ? shown : compare.other.result) : null
   const names = useMemo(
-    () => (pinned ? compareNames(pinned.result, shown, form.system) : { a: 'A', b: 'B' }),
-    [pinned, shown, form.system],
+    () => (sideA ? compareNames(sideA, sideB, form.system) : { a: 'A', b: 'B' }),
+    [sideA, sideB, form.system],
   )
 
   // ---- Handlers ----
@@ -294,10 +299,16 @@ export function TdBulkDensityHome() {
         densitySource: densitySource(form),
         cutX,
         cutZ,
-        canvas3d: show3D ? canvasB.current : null,
-        compare: pinned
-          ? { a: pinned.result, canvasA: show3D ? canvasA.current : null, canvasB: show3D ? canvasB.current : null }
-          : undefined,
+        canvas3d: show3D ? canvasLive.current : null,
+        compare:
+          sideA && sideB
+            ? {
+                a: sideA,
+                b: sideB,
+                canvasA: show3D ? (compare!.editing === 'A' ? canvasLive.current : canvasOther.current) : null,
+                canvasB: show3D ? (compare!.editing === 'B' ? canvasLive.current : canvasOther.current) : null,
+              }
+            : undefined,
       })
       if (!r.logoRendered) toast.warning(PDF_EXPORT_MESSAGES.missingLogo)
       else if (r.viewsMissing) toast.warning("PDF saved, but the section views didn't draw. Check it before you send it.")
@@ -309,6 +320,28 @@ export function TdBulkDensityHome() {
     } finally {
       setExporting(false)
     }
+  }
+
+  /** Start comparing: this run becomes A, and the inputs go on editing a copy as B. */
+  const startCompare = () => {
+    if (!shown || !inputs) return
+    setCompare({ other: { result: computeTdBulkDensity(inputs, 'fine', form.system), form }, editing: 'B' })
+    toast('This run is now A. Change anything (say the belt width) and B shows beside it.')
+  }
+
+  /** Switch which side the inputs edit; the side you leave keeps its numbers. */
+  const editSide = (side: 'A' | 'B') => {
+    if (!compare || compare.editing === side || !inputs) return
+    setCompare({ other: { result: computeTdBulkDensity(inputs, 'fine', form.system), form }, editing: side })
+    setForm(compare.other.form)
+  }
+
+  /** Stop comparing by dropping one side; the inputs keep the other. */
+  const removeSide = (side: 'A' | 'B') => {
+    if (!compare) return
+    if (compare.editing === side) setForm(compare.other.form)
+    setCompare(null)
+    toast(`Removed ${side}. Back to one run.`)
   }
 
   const beltForConfigurator = handoffFromForm(form, handoff ?? undefined)
@@ -413,16 +446,9 @@ export function TdBulkDensityHome() {
                   <Layers className="size-5 text-primary" aria-hidden="true" /> The pocket
                 </CardTitle>
                 <div className="flex gap-2">
-                  {shown && (
-                    <Button
-                      variant="outline"
-                      className="min-h-[44px]"
-                      onClick={() => {
-                        setPinned({ result: shown, form })
-                        toast('This run is now A. Change anything (say the belt width) and B shows side by side.')
-                      }}
-                    >
-                      <Pin className="size-4" /> {pinned ? 'Make this A' : 'Compare'}
+                  {shown && !compare && (
+                    <Button variant="outline" className="min-h-[44px]" onClick={startCompare}>
+                      <Pin className="size-4" /> Compare
                     </Button>
                   )}
                   <Button variant="outline" className="min-h-[44px]" onClick={() => setShow3D((v) => !v)} aria-expanded={show3D}>
@@ -441,24 +467,27 @@ export function TdBulkDensityHome() {
                 ) : (
                   <>
                     {show3D &&
-                      (pinned?.result.heap ? (
+                      (compare && sideA?.heap && sideB?.heap ? (
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <p className="text-sm font-semibold mb-1">{names.a} (pinned)</p>
-                            <Suspense fallback={<Loading3D />}>
-                              <Pocket3D result={pinned.result} inputs={pinned.result.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasA} layers={layers} />
-                            </Suspense>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold mb-1 text-brand">{names.b} (now)</p>
-                            <Suspense fallback={<Loading3D />}>
-                              <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} layers={layers} />
-                            </Suspense>
-                          </div>
+                          {(['A', 'B'] as const).map((side) => {
+                            const r = side === 'A' ? sideA : sideB
+                            const live = compare.editing === side
+                            return (
+                              <div key={side}>
+                                <p className={cn('text-sm font-semibold mb-1', live && 'text-brand')}>
+                                  {side === 'A' ? names.a : names.b}
+                                  {live ? ' (editing)' : ''}
+                                </p>
+                                <Suspense fallback={<Loading3D />}>
+                                  <Pocket3D result={r} inputs={r.inputs} cutX={cutX} cutZ={cutZ} onCanvas={live ? setCanvasLive : setCanvasOther} layers={layers} />
+                                </Suspense>
+                              </div>
+                            )
+                          })}
                         </div>
                       ) : (
                         <Suspense fallback={<Loading3D />}>
-                          <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} layers={layers} />
+                          <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasLive} layers={layers} />
                         </Suspense>
                       ))}
                     {show3D && (
@@ -578,13 +607,14 @@ export function TdBulkDensityHome() {
 
           {/* ---- Results: below the stepper on mobile, bottom right on desktop ---- */}
           <div className="space-y-4 lg:col-start-2 lg:row-start-2">
-            {pinned && (
+            {compare && (
               <CompareStrip
-                a={pinned.result}
-                b={shown}
+                a={sideA}
+                b={sideB}
+                editing={compare.editing}
                 system={form.system}
-                onUnpin={() => setPinned(null)}
-                onRestoreA={() => setForm(pinned.form)}
+                onEdit={editSide}
+                onRemove={removeSide}
               />
             )}
             <ResultsCard
@@ -633,7 +663,7 @@ export function TdBulkDensityHome() {
         meta={meta}
         onMetaChange={setMeta}
         exporting={exporting}
-        hasCompare={!!pinned}
+        hasCompare={!!compare}
         has3d={show3D}
         onExport={handleExport}
       />

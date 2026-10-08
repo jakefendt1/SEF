@@ -68,7 +68,7 @@ export async function exportTdPdf(args: {
   cutX: number
   cutZ: number
   canvas3d?: HTMLCanvasElement | null
-  compare?: { a: TdComputed; canvasA?: HTMLCanvasElement | null; canvasB?: HTMLCanvasElement | null }
+  compare?: { a: TdComputed; b: TdComputed; canvasA?: HTMLCanvasElement | null; canvasB?: HTMLCanvasElement | null }
 }): Promise<TdPdfResult & { viewsMissing: boolean }> {
   const { result, system } = args
   const viewProps = { result, inputs: result.inputs, cutX: args.cutX, cutZ: args.cutZ, onCutX: noop, onCutZ: noop, system }
@@ -86,7 +86,7 @@ export async function exportTdPdf(args: {
     densitySource: args.densitySource,
     images: { pocket3d, side, end },
     compare: args.compare
-      ? { a: args.compare.a, images: { a: canvasImage(args.compare.canvasA), b: canvasImage(args.compare.canvasB) } }
+      ? { a: args.compare.a, b: args.compare.b, images: { a: canvasImage(args.compare.canvasA), b: canvasImage(args.compare.canvasB) } }
       : undefined,
   })
   pdf.save(fileName)
