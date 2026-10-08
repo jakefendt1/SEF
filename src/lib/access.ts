@@ -25,6 +25,7 @@ export const TOOL_COLLECTIONS: Readonly<Record<string, string>> = {
   'aim-glide': 'roiCalculations',
   'td-bulk-density': 'tdBulkDensityRuns',
   onetrack: 'onetrackBoms',
+  'td-configurator': 'tdConfigurations',
 }
 
 /** A stored grant. */

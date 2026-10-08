@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { SIDEWALL_FOOTPRINT_IN } from '../tdBulkDensity/data/sidewalls'
-import { freshBelt, newVar, sidewallFootprint, withSeries, withStyle, type TdBelt } from './belt'
+import { buildOffSidewalls, flightIndentForSidewalls, freshBelt, newVar, sidewallFootprint, withProduct, type TdBelt } from './belt'
 import { IN, PITCH_MM, SSW_FP } from './data'
-import { divisorSuggestions, finalSpacingInfo, jointRemovals, laceWidthValid, repairFlights } from './geometry'
+import { divisorSuggestions, finalSpacingInfo, flightSegments, jointRemovals, laceWidthValid, repairFlights } from './geometry'
 import { spliceFixes, validateBelt, validateRepair } from './validate'
 
 const P = PITCH_MM['8050']
@@ -76,13 +76,49 @@ describe('ThermoDrive belt rules', () => {
     expect(divisorSuggestions(100, 3, 4)).toEqual([2, 4, 1, 5])
   })
 
-  it('series and style changes keep only valid product codes and offered sidewall heights', () => {
-    const b = withSeries({ ...belt(), sidewallHeightIn: 6 }, '8140')
-    expect(b.style in { 'EDT E DUAL LUG (11.5 MM)': 1 }).toBe(true)
+  it('product changes keep only what the manual lists, and offered sidewall heights', () => {
+    const b = withProduct({ ...belt(), sidewallHeightIn: 6 }, { series: '8140' })
+    expect(b.style).toBe('Single-Lug Flat Top E (10.5 mm)')
     expect(b.sidewallHeightIn).toBe(1)
     expect(b.vars[0].startRow).toBe(2.5)
-    expect(withStyle(belt(), 'FLAT TOP E (7 MM)').material).toBe('POLYURETHANE')
-    expect(withSeries(belt({ vgOn: true }), '8050').vgOn).toBe(false)
+    const dual = withProduct(b, { drive: 'dual-lug', material: 'Polyurethane A23' })
+    expect([dual.style, dual.material]).toEqual(['Dual-Lug Flat Top E (10.5 mm)', 'Polyurethane A23'])
+    expect(withProduct(dual, { material: 'Dura' }).material).toBe('Dura')
+    // Dura takes flights only: sidewalls and V-guides drop off.
+    expect(withProduct({ ...dual, sidewallsOn: true, vgOn: true }, { material: 'Dura' })).toMatchObject({ sidewallsOn: false, vgOn: false })
+    expect(withProduct(belt({ vgOn: true }), { series: '8050' }).vgOn).toBe(false)
+  })
+
+  it('a dual-lug belt under 30 in is flagged: its lugs would sit at the edges', () => {
+    const dual = withProduct(freshBelt('8140'), { drive: 'dual-lug' })
+    expect(validateBelt({ ...dual, widthMm: 24 * IN }).find((w) => w.id === 'width-range')!.severity).toBe('error')
+    expect(validateBelt({ ...dual, widthMm: 30 * IN }).map((w) => w.id)).not.toContain('width-range')
+  })
+
+  it('flights build off the sidewalls: turning them on moves the flight ends to the gap', () => {
+    const before = belt()
+    const after = buildOffSidewalls(before, { ...before, sidewallsOn: true, sidewallHeightIn: 3, sidewallInsetMm: 12.7 })
+    expect(after.vars[0].indentLMm).toBeCloseTo(flightIndentForSidewalls(after), 9)
+    expect(validateBelt(after).map((w) => w.id)).not.toContain('sidewall-gap-0')
+    // A hand-typed indent afterwards is left alone.
+    const typed = { ...after, vars: [{ ...after.vars[0], indentLMm: 80 }] }
+    expect(buildOffSidewalls(after, typed).vars[0].indentLMm).toBe(80)
+  })
+
+  it('flight types: offered heights, minimum spacing, center and lug notches', () => {
+    const scoop = belt({ vars: [{ ...newVar(2), flightType: 'scoop', heightMm: 3.5 * IN }] })
+    expect(validateBelt(scoop).map((w) => w.id)).toContain('flight-height-0')
+    const ok = belt({ vars: [{ ...newVar(2), flightType: 'scoop', heightMm: 2.95 * IN }] })
+    expect(validateBelt(ok).map((w) => w.id)).not.toContain('flight-height-0')
+    const tight = belt({ flightSpacingMm: 1 * P, vars: [{ ...newVar(2), flightType: 'scoop', heightMm: 4 * IN }] })
+    expect(validateBelt(tight).map((w) => w.id)).toContain('flight-spacing-min-0')
+    const center = { ...newVar(2), heightMm: 2 * IN, notchOn: true, notchMode: 'center' as const, notchWMm: 1 * IN }
+    expect(flightSegments(belt(), center).segs.map(([a, c]) => [+(a / IN).toFixed(3), +(c / IN).toFixed(3)])).toEqual([
+      [1.25, 11.5],
+      [12.5, 22.75],
+    ])
+    const dual = { ...withProduct(freshBelt('8140'), { drive: 'dual-lug' }), widthMm: 36 * IN }
+    expect(flightSegments(dual, { ...center, notchMode: 'lugs' }).segs).toHaveLength(3)
   })
 
   it("his sidewall footprints are the manual's (one source of truth, two tables)", () => {

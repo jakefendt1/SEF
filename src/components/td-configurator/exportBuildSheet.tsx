@@ -7,7 +7,7 @@ import type { BuildSheet } from '@/lib/thermodrive/buildSheet'
 import type { PdfImage } from '@/lib/onetrackPdf'
 import { buildThermodrivePdf } from '@/lib/thermodrivePdf'
 import type { UnitSystem } from '@/lib/tdBulkDensity/units'
-import { CrossView, SeamView, TopView } from './views'
+import { CrossView, SeamView, SideView, TopView } from './views'
 
 async function svgImage(markup: string): Promise<PdfImage | undefined> {
   if (!markup.startsWith('<svg')) return undefined
@@ -51,11 +51,12 @@ export async function exportBuildSheetPdf(args: {
   canvas3d: HTMLCanvasElement | null
 }): Promise<{ blob: Blob; fileName: string; logoRendered: boolean }> {
   const { belt, system, warnIds } = args
-  const [top, cross, splice] = await Promise.all([
+  const [top, side, cross, splice] = await Promise.all([
     svgImage(renderToStaticMarkup(<TopView belt={belt} system={system} warnIds={warnIds} />)),
+    svgImage(renderToStaticMarkup(<SideView belt={belt} system={system} />)),
     svgImage(renderToStaticMarkup(<CrossView belt={belt} system={system} warnIds={warnIds} />)),
     svgImage(renderToStaticMarkup(<SeamView belt={belt} system={system} />)),
   ])
-  const { pdf, fileName, logoRendered } = buildThermodrivePdf(args.sheet, { belt3d: canvasImage(args.canvas3d), top, cross, splice })
+  const { pdf, fileName, logoRendered } = buildThermodrivePdf(args.sheet, { belt3d: canvasImage(args.canvas3d), top, side, cross, splice })
   return { blob: pdf.output('blob'), fileName, logoRendered }
 }

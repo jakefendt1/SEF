@@ -6,8 +6,9 @@
 import type { TdForm } from '../tdBulkDensity/form'
 import { fieldText, flightHeightIn, readField } from '../tdBulkDensity/form'
 import type { FlightType, Series, SidewallPitch } from '../tdBulkDensity/types'
-import { freshBelt, newVar, sidewallFootprint, sidewallPitch, type TdBelt } from './belt'
-import { CONFIG, IN, SSW_HEIGHTS_IN, START_ROW, fromCalculatorSeries, type BeltSeries } from './data'
+import { accessories, freshBelt, newVar, sidewallFootprint, sidewallPitch, withProduct, type TdBelt } from './belt'
+import { IN, PITCH_MM, SSW_HEIGHTS_IN, START_ROW, fromCalculatorSeries, type BeltSeries } from './data'
+import { PRODUCTS, findProduct } from './products'
 
 export const HANDOFF_PARAM = 'belt'
 
@@ -51,7 +52,7 @@ export function decodeHandoff(text: string | null | undefined): HandoffBelt | nu
     const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
     const json = new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))
     const h = JSON.parse(json) as HandoffBelt
-    if (h?.v !== 1 || !(h.series in CONFIG) || !(h.widthIn > 0)) return null
+    if (h?.v !== 1 || !(h.series in PITCH_MM) || !(h.widthIn > 0)) return null
     return h
   } catch {
     return null
@@ -147,17 +148,25 @@ export interface ConfigFromHandoff {
 
 export function beltFromHandoff(h: HandoffBelt): ConfigFromHandoff {
   const notes: string[] = []
-  const base = freshBelt(h.series)
-  const style = h.style && h.style in CONFIG[h.series] ? h.style : base.style
-  const e = CONFIG[h.series][style]
-  let material = h.material && e.m.includes(h.material) ? h.material : e.m[0]
-  const color = h.color && e.c.includes(h.color) ? h.color : e.c[0]
+  // The belt's data sheet: the one it left with, else the first that takes sidewalls if it has them.
+  const fresh = freshBelt(h.series)
+  const sent = h.style && h.material ? findProduct({ series: h.series, style: h.style, material: h.material }) : null
+  const wantWalls = !!h.sidewall
+  const fallback = PRODUCTS.find((x) => x.series === h.series && x.flights && (!wantWalls || x.sidewalls))
+  const base = sent
+    ? { ...fresh, style: h.style!, material: h.material!, color: sent.colors.includes(h.color ?? '') ? h.color! : sent.colors[0] }
+    : fallback
+      ? withProduct(fresh, { drive: fallback.drive, surface: fallback.surface, material: fallback.material })
+      : fresh
+  let material = base.material
+  const style = base.style
+  const color = base.color
   const heights = SSW_HEIGHTS_IN[h.series] ?? []
   let sidewallHeightIn = base.sidewallHeightIn
   let sidewallsOn = false
   let inset = base.sidewallInsetMm
   if (h.sidewall) {
-    if (!heights.length) notes.push(`Series ${h.series} has no sidewalls in the configurator.`)
+    if (!heights.length || !accessories(base).sidewalls) notes.push(`This ${h.series} belt doesn't take sidewalls.`)
     else {
       sidewallsOn = true
       inset = h.sidewall.indentIn * IN
@@ -167,7 +176,7 @@ export function beltFromHandoff(h: HandoffBelt): ConfigFromHandoff {
         notes.push(`${h.sidewall.heightIn} in sidewalls aren't in the configurator's list; showing ${sidewallHeightIn} in.`)
       }
       // The configurator picks the sidewall pitch from the material: 25 mm is 1 in polyurethane on 8050.
-      if (h.sidewall.pitch === '25mm' && h.series === '8050' && sidewallHeightIn === 1) material = 'POLYURETHANE'
+      if (h.sidewall.pitch === '25mm' && h.series === '8050' && sidewallHeightIn === 1) material = 'Polyurethane'
       const pitch = sidewallPitch({ series: h.series, sidewallHeightIn, material })
       if (`${pitch}mm` !== h.sidewall.pitch) notes.push(`Sidewall pitch is ${pitch} mm here (Bulk Density had ${h.sidewall.pitch}).`)
     }
@@ -176,15 +185,17 @@ export function beltFromHandoff(h: HandoffBelt): ConfigFromHandoff {
   const flightIndent = (fallbackIn: number) => (sidewallsOn && h.sidewall ? inset + fp + h.sidewall.gapIn * IN : fallbackIn * IN)
   const v = {
     ...newVar(h.startRow ?? START_ROW[h.series]),
+    flightType: h.flightType ?? 'deg90',
+    thicknessMm: (h.flightThicknessIn ?? 0.16) * IN,
     heightMm: h.flightHeightIn * IN,
     indentLMm: flightIndent(h.indentLeftIn),
     indentRMm: flightIndent(h.indentRightIn),
     notchOn: h.notchCount > 0,
-    notchMode: 'even' as const,
+    // One notch in Bulk Density is a center notch.
+    notchMode: h.notchCount === 1 ? ('center' as const) : ('even' as const),
     notchCount: h.notchCount > 0 ? h.notchCount : 5,
     notchWMm: h.notchWidthIn * IN || 25,
   }
-  if (h.flightType && h.flightType !== 'deg90') notes.push('The configurator draws every flight square; the flight type comes back unchanged.')
   return {
     belt: {
       ...base,
@@ -205,15 +216,22 @@ export function beltFromHandoff(h: HandoffBelt): ConfigFromHandoff {
   }
 }
 
-/** The configurator's belt, for Bulk Density. `carry` is what came in and isn't modelled here. */
-export function handoffFromBelt(b: TdBelt, carry?: Pick<HandoffBelt, 'flightType' | 'flightThicknessIn'>): { handoff: HandoffBelt; notes: string[] } {
+/** The configurator's belt, for Bulk Density. */
+export function handoffFromBelt(b: TdBelt): { handoff: HandoffBelt; notes: string[] } {
   const notes: string[] = []
   const v = b.vars[0]
   if (b.vars.length > 1) notes.push('Only flight variation 1 goes to Bulk Density.')
   const fp = b.sidewallsOn ? sidewallFootprint(b).fp : 0
   let notchCount = 0
   let notchWidthIn = 0
-  if (v.notchOn && v.notchCount > 0) {
+  if (v.notchOn && v.notchMode === 'center') {
+    notchCount = 1
+    notchWidthIn = v.notchWMm / IN
+  } else if (v.notchOn && v.notchMode === 'lugs') {
+    notchCount = /dual[- ]lug/i.test(b.style) ? 2 : 1
+    notchWidthIn = v.notchWMm / IN
+    if (notchCount === 2) notes.push('Bulk Density spaces notches evenly, so the two lug notches move slightly.')
+  } else if (v.notchOn && v.notchCount > 0) {
     notchCount = v.notchCount
     if (v.notchMode === 'even') notchWidthIn = v.notchWMm / IN
     else {
@@ -228,7 +246,8 @@ export function handoffFromBelt(b: TdBelt, carry?: Pick<HandoffBelt, 'flightType
       series: b.series,
       widthIn: b.widthMm / IN,
       lengthIn: b.lengthMm > 0 ? b.lengthMm / IN : undefined,
-      ...carry,
+      flightType: v.flightType,
+      flightThicknessIn: v.thicknessMm / IN,
       flightHeightIn: v.heightMm / IN,
       flightSpacingIn: b.flightSpacingMm / IN,
       indentLeftIn: v.indentLMm / IN,

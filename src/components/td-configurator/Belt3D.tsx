@@ -1,13 +1,15 @@
 // 3D belt view (plan §6.1). Lazy-loaded like the Bulk Density pocket: three.js
 // downloads only when it's opened. A stretch of belt across the splice: the
-// end of one loop, the splice, the start of the next. Flights with their
-// notches, sidewalls, V-guides and drive lugs underneath; a flight left off at
-// the splice is a red ghost. Units are inches; x runs with belt travel, the
+// end of one loop, the splice, the start of the next. Flights at their real
+// profile (90°, 75°, scoop, short-top scoop) with their notches; corrugated
+// sidewalls (a sine wave at the sidewall pitch); V-guides on top; drive lugs
+// underneath. A flight left off at the splice is a red ghost. Units are inches; x runs with belt travel, the
 // splice at x = 0.
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { effective, pitchMm, sidewallFootprint, type TdBelt } from '@/lib/thermodrive/belt'
+import { effective, pitchMm, sidewallFootprint, sidewallPitch, type TdBelt } from '@/lib/thermodrive/belt'
+import { flightOutline, sidewallWave } from '@/lib/thermodrive/shapes'
 import { IN, VGUIDE_WIDTH_MM } from '@/lib/thermodrive/data'
 import { driveBands, finalSpacingInfo, flightSegments, segHeight, vgPositions } from '@/lib/thermodrive/geometry'
 import { COLORS, beltFill } from './colors'
@@ -20,7 +22,6 @@ export interface Belt3DLayers {
 }
 
 const BELT_TH = 0.3
-const FLIGHT_TH = 0.2
 
 function webglAvailable(): boolean {
   try {
@@ -54,6 +55,30 @@ function box(w: number, h: number, d: number, color: string, x: number, y: numbe
   const m = new THREE.Mesh(geo, mat)
   m.position.set(x, y, z)
   return m
+}
+
+/** A side outline (u along travel, height) extruded across the belt from z to z + depth. In inches. */
+function prism(outline: [number, number][], depth: number, color: string, x: number, z: number, ghost: boolean) {
+  const shape = new THREE.Shape(outline.map(([u, h]) => new THREE.Vector2(u, h)))
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false })
+  if (ghost) {
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color }))
+    geo.dispose()
+    edges.position.set(x, 0, z)
+    return edges
+  }
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide }))
+  m.position.set(x, 0, z)
+  return m
+}
+
+/** A wall standing on a wavy line seen from above ((x, z) points), th thick and h tall. In inches. */
+function wavyWall(path: [number, number][], th: number, h: number, color: string) {
+  const up = path.map(([x, z]) => new THREE.Vector2(x, -(z - th / 2)))
+  const down = [...path].reverse().map(([x, z]) => new THREE.Vector2(x, -(z + th / 2)))
+  const geo = new THREE.ExtrudeGeometry(new THREE.Shape([...up, ...down]), { depth: h, bevelEnabled: false })
+  geo.rotateX(-Math.PI / 2)
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide }))
 }
 
 /** Flight positions (in, from the splice) per variation, and any ghost left off at the splice. */
@@ -108,8 +133,11 @@ function build(group: THREE.Group, belt: TdBelt, layers: Belt3DLayers, warnIds: 
         segs.forEach(([a, c], j) => {
           const za = Math.max(0, a / IN)
           const zc = Math.min(W, c / IN)
-          const h = segHeight(v, j) / IN
-          if (zc > za && h > 0) group.add(box(FLIGHT_TH, h, zc - za, ghost ? COLORS.flag : color, x, h / 2, (za + zc) / 2, { ghost }))
+          const h = segHeight(v, j)
+          if (zc > za && h > 0) {
+            const outline = flightOutline({ ...v, heightMm: h }).map(([u, y]) => [u / IN, y / IN] as [number, number])
+            group.add(prism(outline, zc - za, ghost ? COLORS.flag : color, x, za, ghost))
+          }
         })
       pos[i].x.forEach((x) => place(x, false))
       if (pos[i].ghost !== null) place(pos[i].ghost!, true)
@@ -122,15 +150,33 @@ function build(group: THREE.Group, belt: TdBelt, layers: Belt3DLayers, warnIds: 
     const inset = b.sidewallInsetMm / IN
     const fpIn = fp / IN
     const sides = [inset, ...(b.sidewallsBoth ? [W - inset - fpIn] : [])]
+    const pitchIn = sidewallPitch(b) / IN
     for (const z0 of sides) {
-      group.add(box(L, 0.1, fpIn, COLORS.sidewall, x0 + L / 2, 0.05, z0 + fpIn / 2))
-      group.add(box(L, h, Math.max(0.08, th / IN), COLORS.sidewall, x0 + L / 2, h / 2, z0 + fpIn / 2, { opacity: 0.85 }))
+      group.add(box(L, 0.08, fpIn, COLORS.sidewall, x0 + L / 2, 0.04, z0 + fpIn / 2, { opacity: 0.5 }))
+      // The corrugation, phased from the splice so it lines up the same way every time.
+      const wave = sidewallWave(L, pitchIn, z0, { fp: fpIn, th: Math.max(0.06, th / IN) }, 20).map(([x, z]) => [x + x0, z] as [number, number])
+      group.add(wavyWall(wave, Math.max(0.06, th / IN), h, COLORS.sidewall))
     }
   }
 
   if (layers.vguides && b.vgOn) {
+    // On top of the belt, like the flights (manual Fig. 8-10): 0.512 in base, 0.315 in tall, 39° included.
     const w = VGUIDE_WIDTH_MM / IN
-    for (const c of vgPositions(b)) group.add(box(L, 0.35, w, COLORS.vguide, x0 + L / 2, -BELT_TH - 0.175, c / IN))
+    const top = w - 2 * 0.315 * Math.tan((19.5 * Math.PI) / 180)
+    for (const c of vgPositions(b)) {
+      const zc = c / IN
+      const shape = new THREE.Shape([
+        new THREE.Vector2(-(zc - w / 2), 0),
+        new THREE.Vector2(-(zc + w / 2), 0),
+        new THREE.Vector2(-(zc + top / 2), 0.315),
+        new THREE.Vector2(-(zc - top / 2), 0.315),
+      ])
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false })
+      geo.rotateY(Math.PI / 2)
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: COLORS.vguide, roughness: 0.6, side: THREE.DoubleSide }))
+      m.position.set(x0, 0, 0)
+      group.add(m)
+    }
   }
   return { x0, x1, W }
 }

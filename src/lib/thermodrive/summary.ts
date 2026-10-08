@@ -3,6 +3,7 @@
 import { effective, flightMult, pitchMm, sidewallPitch, type TdBelt } from './belt'
 import { fmtBeltLen, fmtMm } from './format'
 import { finalSpacingInfo, flightSegments, maxSectionInfo, segHeight, vgChannels, vgPositions } from './geometry'
+import { FLIGHT_TYPES } from '../tdBulkDensity/data/flights'
 import type { UnitSystem } from '../tdBulkDensity/units'
 
 export function summaryRows(belt: TdBelt, system: UnitSystem): [string, string][] {
@@ -14,6 +15,7 @@ export function summaryRows(belt: TdBelt, system: UnitSystem): [string, string][
     ['Style', b.style],
     ['Material', b.material],
     ['Color', b.color],
+    ['Joining', b.joining],
     ['Belt width', b.widthMm > 0 ? fmtMm(b.widthMm, system) : '—'],
     ['Belt length', b.lengthMm > 0 ? `${fmtBeltLen(b.lengthMm, system)}, ${(b.lengthMm / p).toFixed(Number.isInteger(+(b.lengthMm / p).toFixed(3)) ? 0 : 2)} rows` : '—'],
     ['Max section length', msi.ft !== null ? `${msi.ft} ft / ${msi.m} m (${msi.label})` : msi.label],
@@ -28,13 +30,17 @@ export function summaryRows(belt: TdBelt, system: UnitSystem): [string, string][
         ? 'no notches'
         : v.notchMode === 'even'
           ? `${v.notchCount} even notch${v.notchCount === 1 ? '' : 'es'} of ${fmtMm(v.notchWMm, system)}${seg.computedFlightWMm !== undefined && seg.computedFlightWMm >= 0 ? ` (pieces ${fmtMm(seg.computedFlightWMm, system)})` : ''}`
-          : v.notchMode === 'manual'
+          : v.notchMode === 'center'
+            ? `center notch ${fmtMm(v.notchWMm, system)} wide`
+            : v.notchMode === 'lugs'
+              ? `notched ${fmtMm(v.notchWMm, system)} over the drive lug${/dual[- ]lug/i.test(b.style) ? 's' : ''}`
+              : v.notchMode === 'manual'
             ? `${v.notchCount} notch${v.notchCount === 1 ? '' : 'es'}, manual widths`
             : `${v.notchCount} notch${v.notchCount === 1 ? '' : 'es'} by position`
       const info = b.lengthMm > 0 ? finalSpacingInfo(b, v) : null
       rows.push([
         b.vars.length > 1 ? `Flights, variation ${i + 1}` : 'Flights',
-        `${h} high, start row ${v.startRow}, indents ${fmtMm(v.indentLMm, system)} / ${fmtMm(v.indentRMm, system)}, ${notch}` +
+        `${FLIGHT_TYPES[v.flightType].label}, ${h} high, ${fmtMm(v.thicknessMm, system)} thick, start row ${v.startRow}, indents ${fmtMm(v.indentLMm, system)} / ${fmtMm(v.indentRMm, system)}, ${notch}` +
           (info ? `; ${info.count} on the belt${info.removed ? ' (1 left off at the splice)' : ''}, ${info.finalGapMm !== undefined ? `${fmtMm(info.finalGapMm, system)} across the splice` : ''}` : ''),
       ])
     })
@@ -52,7 +58,7 @@ export function summaryRows(belt: TdBelt, system: UnitSystem): [string, string][
         ? `${b.vgCount} × K13 at ${vgPositions(b).map((c) => fmtMm(c, system)).join(', ')} from the left edge${vgChannels(b).length ? `; channels ${vgChannels(b).map((c) => fmtMm(c, system)).join(' / ')}` : ''}`
         : 'None',
     ])
-    rows.push(['Drive', /DUAL LUG/i.test(b.style) ? 'Dual lug' : 'Single lug'])
+    rows.push(['Drive', /DUAL[- ]LUG/i.test(b.style) ? 'Dual lug' : 'Single lug'])
   }
   return rows
 }

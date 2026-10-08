@@ -26,6 +26,7 @@ const CONTINUATION_TOP = 22
 export interface BuildSheetImages {
   belt3d?: PdfImage
   top?: PdfImage
+  side?: PdfImage
   cross?: PdfImage
   splice?: PdfImage
 }
@@ -153,6 +154,9 @@ export function buildThermodrivePdf(s: BuildSheet, images: BuildSheetImages): { 
   }
   if (images.top) {
     figure('Top view', images.top, 70, 'From the splice, first flights of each variation. Lengths along and across the belt are scaled separately.')
+  }
+  if (images.side) {
+    figure('Flights from the side', images.side, 60, 'Each flight variation at its real profile and height; the dashed band is the sidewall height.')
   }
   if (images.cross) {
     figure('Cross-section', images.cross, 80, 'Across the width: flights by piece, sidewalls, V-guides.')

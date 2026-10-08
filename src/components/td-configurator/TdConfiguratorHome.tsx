@@ -1,17 +1,17 @@
 // ThermoDrive Belt Configurator: lay out a ThermoDrive belt and check it
 // against the fabrication rules. Rebuilt from Patrick's Belt Configurator
 // (v0.65) over the shared engine in lib/thermodrive, which the Bulk Density
-// calculator uses too. Saves nothing: the belt travels by URL and leaves as a
-// build sheet.
+// calculator uses too. Belts save to the account (tdConfigRecord), travel to
+// Bulk Density by URL, and leave as a build sheet.
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
-import { Check, ChevronLeft, ChevronRight, FileText, Layers, ListChecks, RotateCcw } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, FileText, FolderOpen, Layers, ListChecks, RotateCcw, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { freshBelt, type TdBelt } from '@/lib/thermodrive/belt'
-import { HANDOFF_PARAM, bulkDensityBlocker, encodeHandoff, handoffFromBelt, type HandoffBelt } from '@/lib/thermodrive/handoff'
+import { buildOffSidewalls, freshBelt, type TdBelt } from '@/lib/thermodrive/belt'
+import { HANDOFF_PARAM, bulkDensityBlocker, encodeHandoff, handoffFromBelt } from '@/lib/thermodrive/handoff'
 import { ROUTES } from '@/lib/navigation'
 import { useMyTools } from '@/store/useMyTools'
 import { defaultRepair, defaultSectionMode, type RepairState } from '@/lib/thermodrive/repair'
@@ -20,11 +20,15 @@ import { validateBelt, validateRepair } from '@/lib/thermodrive/validate'
 import type { UnitSystem } from '@/lib/tdBulkDensity/units'
 import { cn } from '@/lib/utils'
 import { WarningsPanel } from '../td-bulk-density/WarningsPanel'
-import { EdgesPanel, FlightsPanel, ProductPanel, SizePanel, type PanelProps } from './BeltPanels'
+import { FlightsSidewallsPanel, ProductPanel, SizePanel, type PanelProps } from './BeltPanels'
 import { RepairPanel, RepairView, SectionsPanel, SectionsView } from './RepairSections'
-import { CrossView, SeamView, SummaryTable, TopView } from './views'
+import { CrossView, SeamView, SideView, SummaryTable, TopView } from './views'
 import type { Belt3DLayers } from './Belt3D'
 import { BuildSheetDialog, type SheetMeta } from './BuildSheetDialog'
+import { SaveConfigDialog, SavedConfigsDialog } from './SaveDialogs'
+import { buildConfigRecord, configTitle, fromConfigRecord, type StoredTdConfig } from '@/lib/tdConfigRecord'
+import { useTdConfigStore } from '@/store/tdConfigStore'
+import { WRITE_MESSAGES } from '@/lib/writeOutcome'
 import { buildSheet, buildSheetHtml, buildSheetText } from '@/lib/thermodrive/buildSheet'
 import { saveBlob } from '../onetrack/outputs'
 import { useAuthStore } from '@/store/authStore'
@@ -49,42 +53,47 @@ function loadUnits(): UnitSystem {
   }
 }
 
-type StepId = 'product' | 'size' | 'flights' | 'edges' | 'check'
+type StepId = 'product' | 'size' | 'flights' | 'check'
 const STEPS: { id: StepId; title: string }[] = [
   { id: 'product', title: 'Product' },
   { id: 'size', title: 'Size' },
-  { id: 'flights', title: 'Flights' },
-  { id: 'edges', title: 'Edges' },
+  { id: 'flights', title: 'Flights & sidewalls' },
   { id: 'check', title: 'Check' },
 ]
 
 const PANELS: Record<Exclude<StepId, 'check'>, (p: PanelProps) => React.ReactElement> = {
   product: ProductPanel,
   size: SizePanel,
-  flights: FlightsPanel,
-  edges: EdgesPanel,
+  flights: FlightsSidewallsPanel,
 }
 
 export interface ConfiguratorInit {
   belt: TdBelt
-  /** What Bulk Density sent that the configurator doesn't model; sent back as-is. */
-  carry?: Pick<HandoffBelt, 'flightType' | 'flightThicknessIn'>
   note?: string
 }
 
-export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
-  const [belt, setBelt] = useState<TdBelt>(() => init?.belt ?? freshBelt())
-  const [system, setSystem] = useState<UnitSystem>(loadUnits)
+export function TdConfiguratorHome({ init, saved }: { init?: ConfiguratorInit; saved?: StoredTdConfig }) {
+  const [opened] = useState(() => (saved ? fromConfigRecord(saved) : null))
+  const [belt, setBelt] = useState<TdBelt>(() => opened?.belt ?? init?.belt ?? freshBelt())
+  const [system, setSystem] = useState<UnitSystem>(() => opened?.system ?? loadUnits())
   const [stepIndex, setStepIndex] = useState(0)
   const [allPanels, setAllPanels] = useState(false)
   const [tab, setTab] = useState<'belt' | 'repair' | 'sections'>('belt')
   const [view, setView] = useState('3d')
-  const [repair, setRepair] = useState<RepairState>(() => defaultRepair(init?.belt ?? freshBelt()))
-  const [sectionMode, setSectionMode] = useState<SectionMode>(defaultSectionMode)
+  const [repair, setRepair] = useState<RepairState>(() => opened?.repair ?? defaultRepair(init?.belt ?? freshBelt()))
+  const [sectionMode, setSectionMode] = useState<SectionMode>(() => opened?.sectionMode ?? defaultSectionMode())
   const [note, setNote] = useState(init?.note ?? null)
   const [layers, setLayers] = useState<Belt3DLayers>({ flights: true, sidewalls: true, vguides: true, drive: true })
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [sheetMeta, setSheetMeta] = useState<SheetMeta>({ customer: '', reference: '', notes: '' })
+  const [sheetMeta, setSheetMeta] = useState<SheetMeta>(() => ({ customer: saved?.customer ?? '', reference: saved?.reference ?? '', notes: saved?.notes ?? '' }))
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [savedOpen, setSavedOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const configs = useTdConfigStore((st) => st.configs)
+  const configsLoaded = useTdConfigStore((st) => st.loaded)
+  const configsError = useTdConfigStore((st) => st.error)
+  const saveConfig = useTdConfigStore((st) => st.save)
+  const removeConfig = useTdConfigStore((st) => st.remove)
   const [exporting, setExporting] = useState(false)
   const profile = useAuthStore((s) => s.profile)
   const email = useAuthStore((s) => s.user?.email ?? '')
@@ -94,7 +103,8 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
   const { tools } = useMyTools()
 
   const set = useCallback((patch: Partial<TdBelt> | ((b: TdBelt) => TdBelt)) => {
-    setBelt((b) => (typeof patch === 'function' ? patch(b) : { ...b, ...patch }))
+    // Flights build off the sidewalls: a sidewall change moves the flight ends.
+    setBelt((b) => buildOffSidewalls(b, typeof patch === 'function' ? patch(b) : { ...b, ...patch }))
   }, [])
 
   const warnings = useMemo(
@@ -120,13 +130,51 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
     setSectionMode(defaultSectionMode())
     setStepIndex(0)
     setNote(null)
+    setSheetMeta({ customer: '', reference: '', notes: '' })
+    if (saved) navigate(ROUTES.tdConfigurator)
   }
 
   const sendBlocker = bulkDensityBlocker(belt.series) ?? (!(belt.widthMm > 0) || !belt.flightsOn || !(belt.vars[0]?.heightMm > 0) ? 'Enter the width and a flight height first.' : null)
   const sendToBulkDensity = () => {
     if (sendBlocker) return
-    const { handoff } = handoffFromBelt(belt, init?.carry)
+    const { handoff } = handoffFromBelt(belt)
     navigate(`${ROUTES.tdBulkDensity}?${HANDOFF_PARAM}=${encodeHandoff(handoff)}`)
+  }
+
+  const savedKey = useMemo(() => (saved ? JSON.stringify(fromConfigRecord(saved)) : null), [saved])
+  const dirty = !!saved && JSON.stringify({ belt, repair, sectionMode, system }) !== savedKey
+
+  const handleSave = async (asNew: boolean) => {
+    const now = Date.now()
+    const id = !saved || asNew ? crypto.randomUUID() : saved.id
+    const rec = buildConfigRecord({ id, ...sheetMeta, belt, repair, sectionMode, system, createdAt: !saved || asNew ? now : saved.createdAt, now })
+    setSaving(true)
+    const { outcome, settled } = await saveConfig(rec)
+    setSaving(false)
+    if (outcome.kind === 'failed') {
+      toast.error(`Didn't save. ${outcome.message}`)
+      return
+    }
+    if (outcome.kind === 'saved') toast.success(WRITE_MESSAGES.saved)
+    else {
+      toast(WRITE_MESSAGES.queued)
+      void settled.then((o) => {
+        if (o.kind === 'failed') toast.error(`${WRITE_MESSAGES.lateFailed} ${o.message}`)
+      })
+    }
+    setSaveOpen(false)
+    if (saved?.id !== id) navigate(`${ROUTES.tdConfigurator}/${id}`)
+  }
+
+  const handleDelete = async (c: StoredTdConfig) => {
+    if (!window.confirm(`Delete "${configTitle(c)}"? This can't be undone.`)) return
+    const { outcome } = await removeConfig(c.id)
+    if (outcome.kind === 'failed') {
+      toast.error(`Didn't delete. ${outcome.message}`)
+      return
+    }
+    toast(outcome.kind === 'saved' ? WRITE_MESSAGES.deleted : WRITE_MESSAGES.deleteQueued)
+    if (saved?.id === c.id) navigate(ROUTES.tdConfigurator)
   }
 
   const sheetNow = () =>
@@ -175,7 +223,7 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
 
   const step = STEPS[stepIndex]
   const stepDone = (id: StepId) =>
-    id === 'product' ? true : id === 'size' ? belt.widthMm > 0 && belt.lengthMm > 0 : id === 'flights' ? !belt.flightsOn || belt.vars.every((v) => v.heightMm > 0) : id === 'edges'
+    id === 'product' ? true : id === 'size' ? belt.widthMm > 0 && belt.lengthMm > 0 : id === 'flights' ? !belt.flightsOn || belt.vars.every((v) => v.heightMm > 0) : false
   const panelProps: PanelProps = { belt, set, system }
 
   const stepper = (
@@ -189,7 +237,7 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
         </div>
         {!allPanels && (
           <nav aria-label="Steps">
-            <ol className="grid grid-cols-5 gap-1">
+            <ol className="grid grid-cols-4 gap-1">
               {STEPS.map((s, i) => {
                 const current = i === stepIndex
                 const done = s.id !== 'check' && stepDone(s.id)
@@ -265,7 +313,9 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
         <div className="container flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-foreground leading-tight">ThermoDrive Belt Configurator</h2>
-            <p className="text-sm text-muted-foreground truncate">Developed by Patrick Madore. Nothing is saved.</p>
+            <p className={cn('text-sm truncate', dirty ? 'text-warning-orange font-medium' : 'text-muted-foreground')}>
+              {saved ? `${configTitle(saved)} · ${dirty ? 'changes not saved yet' : 'saved'}` : 'Developed by Patrick Madore. Not saved yet.'}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-lg border border-border overflow-hidden" role="group" aria-label="Units">
@@ -287,6 +337,14 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
                 <span className="hidden sm:inline">Send to Bulk Density</span>
               </Button>
             )}
+            <Button variant="outline" className="min-h-[44px]" onClick={() => setSavedOpen(true)}>
+              <FolderOpen className="size-5" />
+              <span className="hidden sm:inline">Saved belts</span>
+            </Button>
+            <Button variant="outline" className="min-h-[44px]" disabled={!(belt.widthMm > 0)} onClick={() => setSaveOpen(true)}>
+              <Save className="size-5" />
+              <span className="hidden sm:inline">Save</span>
+            </Button>
             <Button variant="outline" className="min-h-[44px]" disabled={!(belt.widthMm > 0)} onClick={() => setSheetOpen(true)}>
               <FileText className="size-5" />
               <span className="hidden sm:inline">Build sheet</span>
@@ -321,9 +379,10 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
               <CardContent className="pt-6 space-y-4">
                 {tab === 'belt' && (
                   <Tabs value={view} onValueChange={setView}>
-                    <TabsList className="w-full h-auto grid grid-cols-3 sm:grid-cols-5 gap-1">
+                    <TabsList className="w-full h-auto grid grid-cols-3 sm:grid-cols-6 gap-1">
                       <TabsTrigger value="3d" className="text-base min-h-[44px]">3D</TabsTrigger>
                       <TabsTrigger value="top" className="text-base min-h-[44px]">Top</TabsTrigger>
+                      <TabsTrigger value="side" className="text-base min-h-[44px]">Side</TabsTrigger>
                       <TabsTrigger value="splice" className="text-base min-h-[44px]">Splice</TabsTrigger>
                       <TabsTrigger value="cross" className="text-base min-h-[44px]">Cross-section</TabsTrigger>
                       <TabsTrigger value="summary" className="text-base min-h-[44px]">Summary</TabsTrigger>
@@ -351,6 +410,9 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
                     </TabsContent>
                     <TabsContent value="top" className="pt-3">
                       <TopView belt={belt} system={system} warnIds={warnIds} id="td-view-top" />
+                    </TabsContent>
+                    <TabsContent value="side" className="pt-3">
+                      <SideView belt={belt} system={system} id="td-view-side" />
                     </TabsContent>
                     <TabsContent value="splice" className="pt-3">
                       <SeamView belt={belt} system={system} id="td-view-splice" />
@@ -395,6 +457,16 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
           </div>
         </div>
       </div>
+      <SaveConfigDialog open={saveOpen} onOpenChange={setSaveOpen} meta={sheetMeta} onMetaChange={setSheetMeta} canUpdate={!!saved} saving={saving} onSave={(n) => void handleSave(n)} />
+      <SavedConfigsDialog
+        open={savedOpen}
+        onOpenChange={setSavedOpen}
+        configs={configs}
+        loaded={configsLoaded}
+        error={configsError}
+        system={system}
+        onDelete={(c) => void handleDelete(c)}
+      />
       <BuildSheetDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}

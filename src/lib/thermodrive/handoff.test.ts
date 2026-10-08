@@ -55,7 +55,7 @@ describe('Bulk Density <-> Belt Configurator hand-off', () => {
     const form = inputsToForm(original, 'imperial')
     const out = handoffFromForm(form)!
     const opened = beltFromHandoff(decodeHandoff(encodeHandoff(out))!)
-    const back = handoffFromBelt(opened.belt, { flightType: out.flightType, flightThicknessIn: out.flightThicknessIn })
+    const back = handoffFromBelt(opened.belt)
     const returned = formToInputs(reconcile(applyHandoffToForm(form, decodeHandoff(encodeHandoff(back.handoff))!)))!
     expect(beltOf(returned)).toEqual(beltOf(original))
     // The product and incline never crossed over and are still there.
@@ -67,9 +67,9 @@ describe('Bulk Density <-> Belt Configurator hand-off', () => {
     const p = PITCH_MM['8140']
     const belt: TdBelt = {
       ...freshBelt('8140'),
-      style: 'FLAT TOP E (10.5 MM)',
-      material: 'DURA',
-      color: 'WHITE',
+      style: 'Single-Lug Flat Top E (10.5 mm)',
+      material: 'Polyurethane A23',
+      color: 'White',
       widthMm: 30 * IN,
       lengthMm: 200 * p,
       flightSpacingMm: 5 * p,

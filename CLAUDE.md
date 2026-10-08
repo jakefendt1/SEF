@@ -220,6 +220,26 @@ unmodelled fields (flight type and thickness one way; style, material,
 color, start row and length the other) so a round trip is lossless
 (`handoff.test.ts`). 8126 can't go to Bulk Density yet.
 
+**Products come from the manual, not his table.** `products.ts` is one row
+per data sheet in the 2026 ThermoDrive Engineering Manual (materials, colors
+per material, width range, joining options, "Available with flights,
+sidewall, and V-guide"). His CONFIG (`data.ts`) stays for the parity tests
+only. Dual-lug lugs are 24.13 in apart (two 6 in sprockets, 30.13 in over
+their faces, manual p.64), which is why dual-lug belts start at 30 in.
+
+**Flights build off the sidewalls.** `buildOffSidewalls` moves the flight
+ends to inset + footprint + 0.2 in whenever a sidewall setting changes; a
+hand-typed indent after that is left alone and still checked.
+
+**Flight types are the Bulk Density calculator's** (`FLIGHT_TYPES`,
+`buildProfile`), so a scoop draws with the bulletin's lip in both tools.
+Sidewalls draw as a sine wave at their pitch (`shapes.ts`); V-guides sit on
+the top face with the flights (manual Fig. 8-10).
+
+**Saved belts** live at `users/{uid}/tdConfigurations` (rules:
+`hasTool('td-configurator')`). Reopening merges onto a fresh belt, so add a
+field with a default rather than migrating.
+
 **Simplifications against his tool:** the repair section reuses flight
 variation 1 and the belt spacing (his has its own variation editor); the 3D
 view shows the belt across the splice only, not the repair or sections.
@@ -296,8 +316,7 @@ rejects as irregular whitespace. Check the file after editing that regex.
 
 - **For Patrick (configurator):** his sidewall heights (8050: 1, 2, 3, 4, 6 in;
   8140: 1-4 in) differ from the manual's (2.3 in, 25 mm 2 in; no 1 in on
-  8140); V-guide-to-flight clearance uses the flights' indents though the
-  guides are under the belt; credit and co-ownership of the rules.
+  8140); his 8140 pitch is 1.558 in, the data sheets say 1.555 in.
 - **Scoop bulletin, 4 mm standard scoop:** drawn 1.65 in from the product
   face where 2.00 - 0.157 = 1.84 in. The engine uses reach - thickness.
 

@@ -1,27 +1,31 @@
-// The configurator's inputs, one panel per step: product, size, flights,
-// sidewalls and V-guides. Only valid choices are offered: no V-guide switch
-// off 8140, only the sidewall heights a series has, styles by series.
+// The configurator's inputs, one panel per step: product, size, then flights
+// and sidewalls together. Only valid choices are offered: products from the
+// manual's data sheets, sidewalls and V-guides only on belts that take them,
+// flight heights and thicknesses by flight type. Sidewalls come first and the
+// flights build off them.
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
+  accessories,
+  flightIndentForSidewalls,
   flightMult,
-  newVar,
+  flightOptions,
   pitchMm,
   sidewallFootprint,
   sidewallPitch,
-  sidewallsAvailable,
-  vguidesAvailable,
-  withSeries,
-  withStyle,
+  withProduct,
   type FlightVar,
   type NotchMode,
   type TdBelt,
 } from '@/lib/thermodrive/belt'
-import { BELT_SERIES, CONFIG, IN, MIN_FLIGHT_SIDEWALL_GAP_MM, SSW_HEIGHTS_IN, START_ROW, type BeltSeries } from '@/lib/thermodrive/data'
+import { BELT_SERIES, DRIVE_LUG_WIDTH_MM, IN, MIN_FLIGHT_SIDEWALL_GAP_MM, SSW_HEIGHTS_IN, START_ROW, type BeltSeries } from '@/lib/thermodrive/data'
 import { fmtBeltLen, fmtMm } from '@/lib/thermodrive/format'
 import { flightSegments, isPitchIncrement, maxSectionInfo } from '@/lib/thermodrive/geometry'
+import { DRIVE_LABEL, drivesFor, findProduct, materialsFor, surfacesFor, type Drive, type Joining } from '@/lib/thermodrive/products'
 import { snapToRows } from '@/lib/thermodrive/rows'
+import { FLIGHT_TYPES, FLIGHT_TYPE_ORDER } from '@/lib/tdBulkDensity/data/flights'
+import type { FlightType } from '@/lib/tdBulkDensity/types'
 import { formatLen, type UnitSystem } from '@/lib/tdBulkDensity/units'
 import { CheckField, ChoiceButtons, NumberField, SectionNote, SelectField } from '../td-bulk-density/fields'
 import { LenField } from './LenField'
@@ -49,23 +53,74 @@ function SnapButtons({ options, onPick }: { options: { label: string; mm: number
   )
 }
 
-export function ProductPanel({ belt, set }: PanelProps) {
-  const styles = Object.keys(CONFIG[belt.series])
-  const e = CONFIG[belt.series][belt.style]
+function Subhead({ children }: { children: React.ReactNode }) {
+  return <h4 className="text-base font-semibold border-b border-border pb-1">{children}</h4>
+}
+
+const JOINING_LABEL: Record<Joining, string> = {
+  endless: 'Endless',
+  'prepared ends': 'Prepared ends',
+  'ThermoLace HDE': 'ThermoLace HDE',
+  'metal lace': 'Metal lace',
+}
+
+export function ProductPanel({ belt, set, system }: PanelProps) {
+  const pr = findProduct(belt)
+  const drive: Drive = pr?.drive ?? drivesFor(belt.series)[0]
+  const surfaces = surfacesFor(belt.series, drive)
+  const surface = pr?.surface ?? surfaces[0]
+  const materials = materialsFor(belt.series, drive, surface)
+  const drives = drivesFor(belt.series)
   return (
     <div className="space-y-5">
       <ChoiceButtons<BeltSeries>
         title="Series"
         value={belt.series}
         columns={4}
-        onChange={(s) => set((b) => withSeries(b, s))}
+        onChange={(series) => set((b) => withProduct(b, { series }))}
         options={BELT_SERIES.map((s) => ({ value: s, label: s, detail: `${fmtMm(pitchMm({ series: s }), 'imperial')} pitch` }))}
       />
-      <SelectField id="td-style" title="Style" value={belt.style} onChange={(v) => set((b) => withStyle(b, v))} options={styles.map((s) => ({ value: s, label: s }))} />
+      {drives.length > 1 && (
+        <ChoiceButtons<Drive>
+          title="Drive"
+          value={drive}
+          columns={2}
+          onChange={(d) => set((b) => withProduct(b, { drive: d }))}
+          options={drives.map((d) => ({ value: d, label: DRIVE_LABEL[d], detail: d === 'dual-lug' ? '30 to 60 in wide' : d === 'single-lug' ? '5 to 36 in wide' : undefined }))}
+        />
+      )}
+      <SelectField
+        id="td-surface"
+        title="Surface and thickness"
+        value={surface}
+        onChange={(v) => set((b) => withProduct(b, { drive, surface: v }))}
+        options={surfaces.map((x) => ({ value: x, label: x }))}
+      />
+      <ChoiceButtons<string>
+        title="Material"
+        value={belt.material}
+        columns={materials.length > 2 ? 'auto' : 2}
+        onChange={(m) => set((b) => withProduct(b, { drive, surface, material: m }))}
+        options={materials.map((m) => ({ value: m, label: m }))}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField id="td-material" title="Material" value={belt.material} onChange={(material) => set({ material })} options={e.m.map((m) => ({ value: m, label: m }))} />
-        <SelectField id="td-color" title="Color" value={belt.color} onChange={(color) => set({ color })} options={e.c.map((c) => ({ value: c, label: c }))} />
+        <SelectField id="td-color" title="Color" value={belt.color} onChange={(color) => set({ color })} options={(pr?.colors ?? [belt.color]).map((c) => ({ value: c, label: c }))} />
+        <SelectField
+          id="td-joining"
+          title="Joining"
+          value={belt.joining}
+          onChange={(v) => set({ joining: v as Joining })}
+          options={(pr?.joining ?? [belt.joining]).map((j) => ({ value: j, label: JOINING_LABEL[j] }))}
+        />
       </div>
+      {pr && (
+        <SectionNote>
+          {formatLen(pr.minWidthIn, system)} to {formatLen(pr.maxWidthIn, system)} wide. Takes{' '}
+          {[pr.flights && 'flights', pr.sidewalls && 'sidewalls', pr.vguides && 'V-guides'].filter(Boolean).join(', ') || 'no flights or sidewalls'}
+          {pr.drive === 'dual-lug' && '. Two drive lugs, 24.13 in apart on the belt centerline'}
+          {belt.joining === 'ThermoLace HDE' && '. ThermoLace HDE: the belt width should be a 1/2 in multiple'} (ThermoDrive manual data sheet).
+        </SectionNote>
+      )}
     </div>
   )
 }
@@ -74,9 +129,17 @@ export function SizePanel({ belt, set, system }: PanelProps) {
   const p = pitchMm(belt)
   const offRow = belt.lengthMm > 0 && !isPitchIncrement(belt)
   const msi = maxSectionInfo(belt)
+  const pr = findProduct(belt)
   return (
     <div className="space-y-5">
-      <LenField id="td-width" title="Belt width" mm={belt.widthMm} system={system} onChange={(widthMm) => set({ widthMm })} />
+      <LenField
+        id="td-width"
+        title="Belt width"
+        mm={belt.widthMm}
+        system={system}
+        onChange={(widthMm) => set({ widthMm })}
+        helper={pr ? `This belt comes ${formatLen(pr.minWidthIn, system)} to ${formatLen(pr.maxWidthIn, system)} wide.` : undefined}
+      />
       <div className="space-y-2">
         <LenField
           id="td-length"
@@ -119,12 +182,6 @@ export function SizePanel({ belt, set, system }: PanelProps) {
   )
 }
 
-const NOTCH_MODES: { value: NotchMode; label: string; detail: string }[] = [
-  { value: 'even', label: 'Even', detail: 'Equal pieces' },
-  { value: 'manual', label: 'Manual', detail: 'Widths and heights per piece' },
-  { value: 'position', label: 'By position', detail: 'Notch edges from the left' },
-]
-
 function numList(text: string, system: UnitSystem): number[] {
   return text
     .split(',')
@@ -159,15 +216,65 @@ function ListField({ id, title, mm, system, onChange, helper }: { id: string; ti
   )
 }
 
+function notchModes(belt: TdBelt): { value: NotchMode; label: string; detail: string }[] {
+  const lugs = belt.series === '8140'
+  return [
+    { value: 'center', label: 'Center', detail: 'One notch on the centerline' },
+    ...(lugs ? [{ value: 'lugs' as const, label: 'At the lugs', detail: /dual[- ]lug/i.test(belt.style) ? 'Over both drive lugs' : 'Over the drive lug' }] : []),
+    { value: 'even', label: 'Even', detail: 'Equal pieces' },
+    { value: 'manual', label: 'Manual', detail: 'Widths and heights per piece' },
+    { value: 'position', label: 'By position', detail: 'Notch edges from the left' },
+  ]
+}
+
 function VarEditor({ belt, v, index, onChange, system }: { belt: TdBelt; v: FlightVar; index: number; onChange: (v: FlightVar) => void; system: UnitSystem }) {
   const seg = flightSegments(belt, v)
-  const sswEdge = belt.sidewallsOn ? belt.sidewallInsetMm + sidewallFootprint(belt).fp + MIN_FLIGHT_SIDEWALL_GAP_MM : null
+  const sswEdge = belt.sidewallsOn ? flightIndentForSidewalls(belt) : null
   const id = `td-v${index}`
   const half = belt.series === '8140'
+  const o = flightOptions(v.flightType)
   return (
     <div className="space-y-4">
+      <ChoiceButtons<FlightType>
+        title="Flight type"
+        value={v.flightType}
+        columns={2}
+        onChange={(flightType) => {
+          const no = flightOptions(flightType)
+          const h = v.heightMm / IN
+          const heightMm = no.heightsIn ? (no.heightsIn.some((x) => Math.abs(x - h) < 0.01) ? v.heightMm : 0) : v.heightMm
+          const t = v.thicknessMm / IN
+          const thicknessMm = no.thicknessesIn.some((x) => Math.abs(x - t) < 0.01) ? v.thicknessMm : (no.thicknessesIn.includes(0.16) ? 0.16 : no.thicknessesIn[0]) * IN
+          onChange({ ...v, flightType, heightMm, thicknessMm })
+        }}
+        options={FLIGHT_TYPE_ORDER.map((t) => ({ value: t, label: FLIGHT_TYPES[t].label, detail: FLIGHT_TYPES[t].blurb, image: `/td-bulk-density/${FLIGHT_TYPES[t].image}` }))}
+      />
+      {o.heightsIn ? (
+        <ChoiceButtons<string>
+          title="Flight height"
+          value={v.heightMm > 0 ? String(+(v.heightMm / IN).toFixed(3)) : ''}
+          columns={o.heightsIn.length > 4 ? 'auto' : 4}
+          onChange={(h) => onChange({ ...v, heightMm: Number(h) * IN })}
+          options={o.heightsIn.map((h) => ({ value: String(h), label: formatLen(h, system) }))}
+        />
+      ) : (
+        <LenField
+          id={`${id}-h`}
+          title="Flight height"
+          mm={v.heightMm}
+          system={system}
+          onChange={(heightMm) => onChange({ ...v, heightMm })}
+          helper={`Cut to any height from ${formatLen(o.minIn, system)} to ${formatLen(o.maxIn, system)}.`}
+        />
+      )}
+      <ChoiceButtons<string>
+        title="Flight thickness"
+        value={String(+(v.thicknessMm / IN).toFixed(3))}
+        columns={3}
+        onChange={(t) => onChange({ ...v, thicknessMm: Number(t) * IN })}
+        options={o.thicknessesIn.map((t) => ({ value: String(t), label: formatLen(t, system) }))}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <LenField id={`${id}-h`} title="Flight height" mm={v.heightMm} system={system} onChange={(heightMm) => onChange({ ...v, heightMm })} />
         <NumberField
           id={`${id}-sr`}
           title="Start row (from the splice)"
@@ -178,38 +285,47 @@ function VarEditor({ belt, v, index, onChange, system }: { belt: TdBelt; v: Flig
           }}
           helper={`Default ${START_ROW[belt.series]}${half ? ' (half rows on 8140)' : ''}.`}
         />
+        <div />
         <LenField
           id={`${id}-il`}
           title="Left indent"
           mm={v.indentLMm}
           system={system}
           onChange={(indentLMm) => onChange({ ...v, indentLMm })}
-          helper={sswEdge !== null ? `At least ${fmtMm(sswEdge, system)} to clear the sidewall.` : undefined}
+          helper={sswEdge !== null ? `Set from the sidewall: ${fmtMm(sswEdge, system)} keeps the 0.2 in gap.` : undefined}
         />
         <LenField id={`${id}-ir`} title="Right indent" mm={v.indentRMm} system={system} onChange={(indentRMm) => onChange({ ...v, indentRMm })} />
       </div>
-      <CheckField id={`${id}-notch`} title="Notches" checked={v.notchOn} onChange={(notchOn) => onChange({ ...v, notchOn })} />
+      <CheckField id={`${id}-notch`} title="Notches" checked={v.notchOn} onChange={(notchOn) => onChange({ ...v, notchOn, notchMode: notchOn && !v.notchOn ? 'center' : v.notchMode })} />
       {v.notchOn && (
         <div className="space-y-4 rounded-lg border border-border p-3">
-          <ChoiceButtons<NotchMode> title="Notch layout" value={v.notchMode} columns={3} onChange={(notchMode) => onChange({ ...v, notchMode })} options={NOTCH_MODES} />
-          <NumberField
-            id={`${id}-nc`}
-            title="Number of notches"
-            inputMode="numeric"
-            value={String(v.notchCount)}
-            onChange={(t) => {
-              const n = Math.round(Number(t))
-              if (Number.isFinite(n) && n >= 0 && n <= 20) onChange({ ...v, notchCount: n })
-            }}
-          />
-          {v.notchMode === 'even' && (
+          <ChoiceButtons<NotchMode> title="Notch layout" value={v.notchMode} columns={2} onChange={(notchMode) => onChange({ ...v, notchMode })} options={notchModes(belt)} />
+          {(v.notchMode === 'even' || v.notchMode === 'manual' || v.notchMode === 'position') && (
+            <NumberField
+              id={`${id}-nc`}
+              title="Number of notches"
+              inputMode="numeric"
+              value={String(v.notchCount)}
+              onChange={(t) => {
+                const n = Math.round(Number(t))
+                if (Number.isFinite(n) && n >= 0 && n <= 20) onChange({ ...v, notchCount: n })
+              }}
+            />
+          )}
+          {(v.notchMode === 'even' || v.notchMode === 'center' || v.notchMode === 'lugs') && (
             <LenField
               id={`${id}-nw`}
               title="Notch width"
               mm={v.notchWMm}
               system={system}
               onChange={(notchWMm) => onChange({ ...v, notchWMm })}
-              helper={seg.computedFlightWMm !== undefined && seg.computedFlightWMm >= 0 ? `Each flight piece: ${fmtMm(seg.computedFlightWMm, system)}.` : undefined}
+              helper={
+                v.notchMode === 'lugs'
+                  ? `Drive lugs are ${fmtMm(DRIVE_LUG_WIDTH_MM, system)} wide; leave room for the limiter.`
+                  : seg.computedFlightWMm !== undefined && seg.computedFlightWMm >= 0
+                    ? `Each flight piece: ${fmtMm(seg.computedFlightWMm, system)}.`
+                    : undefined
+              }
             />
           )}
           {v.notchMode === 'manual' && (
@@ -238,147 +354,162 @@ function VarEditor({ belt, v, index, onChange, system }: { belt: TdBelt; v: Flig
   )
 }
 
-export function FlightsPanel({ belt, set, system }: PanelProps) {
-  const p = pitchMm(belt)
-  const rows = belt.flightSpacingMm / p
-  const offRow = Math.abs(rows - Math.round(rows)) > 1e-3
+function SidewallsSection({ belt, set, system }: PanelProps) {
+  const heights = SSW_HEIGHTS_IN[belt.series] ?? []
   return (
-    <div className="space-y-5">
-      <CheckField id="td-flights" title="Flights" checked={belt.flightsOn} onChange={(flightsOn) => set({ flightsOn })} />
-      {belt.flightsOn && (
+    <div className="space-y-4">
+      <CheckField id="td-ssw" title="Synchronized sidewalls" checked={belt.sidewallsOn} onChange={(sidewallsOn) => set({ sidewallsOn })} />
+      {belt.sidewallsOn && (
         <>
-          <div className="space-y-2">
-            <LenField
-              id="td-spacing"
-              title="Flight spacing"
-              mm={belt.flightSpacingMm}
-              system={system}
-              onChange={(flightSpacingMm) => set({ flightSpacingMm })}
-              helper={!offRow ? `${flightMult(belt)} rows × ${fmtMm(p, system)}.` : undefined}
-              problem={offRow ? 'Flights sit on rows, so spacing is a whole number of rows. Pick one:' : undefined}
-            />
-            {offRow && belt.flightSpacingMm > 0 && (
-              <SnapButtons
-                options={snapToRows(belt.series, belt.flightSpacingMm / IN).map((s) => ({
-                  label: `${formatLen(s.lengthIn, system)} · ${s.rows} rows`,
-                  mm: s.lengthIn * IN,
-                }))}
-                onPick={(flightSpacingMm) => set({ flightSpacingMm })}
-              />
-            )}
+          <ChoiceButtons<string>
+            title="Sidewall height"
+            value={String(belt.sidewallHeightIn)}
+            columns={heights.length > 4 ? 'auto' : 4}
+            onChange={(h) => set({ sidewallHeightIn: Number(h) })}
+            options={heights.map((h) => ({ value: String(h), label: formatLen(h, system) }))}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LenField id="td-ssw-inset" title="Sidewall inset from the belt edge" mm={belt.sidewallInsetMm} system={system} onChange={(sidewallInsetMm) => set({ sidewallInsetMm })} />
+            <CheckField id="td-ssw-both" title="Both edges" checked={belt.sidewallsBoth} onChange={(sidewallsBoth) => set({ sidewallsBoth })} />
           </div>
-          {belt.vars.map((v, i) => (
-            <div key={i} className="space-y-3">
-              {belt.vars.length > 1 && (
-                <div className="flex items-center justify-between">
-                  <h4 className="text-base font-semibold">Variation {i + 1}</h4>
-                  {i > 0 && (
-                    <Button variant="ghost" className="min-h-[44px]" onClick={() => set((b) => ({ ...b, vars: b.vars.slice(0, 1) }))}>
-                      <Trash2 className="size-4" /> Remove
-                    </Button>
-                  )}
-                </div>
-              )}
-              <VarEditor belt={belt} v={v} index={i} system={system} onChange={(nv) => set((b) => ({ ...b, vars: b.vars.map((x, j) => (j === i ? nv : x)) }))} />
-            </div>
-          ))}
-          {belt.vars.length === 1 && (
-            <Button
-              variant="outline"
-              className="min-h-[48px] text-base"
-              onClick={() => set((b) => ({ ...b, vars: [...b.vars, { ...newVar(b.vars[0].startRow + 1), heightMm: b.vars[0].heightMm }] }))}
-            >
-              <Plus className="size-5" /> Add a second flight variation
-            </Button>
-          )}
+          <SectionNote>
+            {sidewallPitch(belt)} mm wave pitch; footprint {fmtMm(sidewallFootprint(belt).fp, system)}, {fmtMm(sidewallFootprint(belt).th, system)} thick. The
+            flights below start {fmtMm(MIN_FLIGHT_SIDEWALL_GAP_MM, system)} clear of it.
+          </SectionNote>
         </>
       )}
     </div>
   )
 }
 
-export function EdgesPanel({ belt, set, system }: PanelProps) {
-  const heights = SSW_HEIGHTS_IN[belt.series] ?? []
-  const vgOk = vguidesAvailable(belt.series)
+function VguidesSection({ belt, set, system }: PanelProps) {
   return (
-    <div className="space-y-6">
-      {sidewallsAvailable(belt.series) ? (
-        <div className="space-y-4">
-          <CheckField id="td-ssw" title="Sidewalls" checked={belt.sidewallsOn} onChange={(sidewallsOn) => set({ sidewallsOn })} />
-          {belt.sidewallsOn && (
+    <div className="space-y-4">
+      <CheckField id="td-vg" title="V-guides (K13)" checked={belt.vgOn} onChange={(vgOn) => set({ vgOn })} />
+      {belt.vgOn && (
+        <>
+          <ChoiceButtons<string>
+            title="Number of guides"
+            value={String(belt.vgCount)}
+            columns={4}
+            onChange={(n) => set({ vgCount: Number(n) })}
+            options={['1', '2', '3', '4'].map((n) => ({ value: n, label: n, detail: n === '1' ? 'Centered' : n === '4' ? 'Two centered pairs' : undefined }))}
+          />
+          {belt.vgCount === 4 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <LenField id="td-vg-outer" title="Outer pair spacing (centers)" mm={belt.vgOuterSpMm} system={system} onChange={(vgOuterSpMm) => set({ vgOuterSpMm })} />
+              <LenField id="td-vg-inner" title="Inner pair spacing (centers)" mm={belt.vgInnerSpMm} system={system} onChange={(vgInnerSpMm) => set({ vgInnerSpMm })} />
+            </div>
+          ) : belt.vgCount >= 2 ? (
             <>
-              <ChoiceButtons<string>
-                title="Sidewall height"
-                value={String(belt.sidewallHeightIn)}
-                columns={heights.length > 4 ? 'auto' : 4}
-                onChange={(h) => set({ sidewallHeightIn: Number(h) })}
-                options={heights.map((h) => ({ value: String(h), label: formatLen(h, system) }))}
-              />
               <div className="grid gap-4 sm:grid-cols-2">
-                <LenField id="td-ssw-inset" title="Sidewall inset from the belt edge" mm={belt.sidewallInsetMm} system={system} onChange={(sidewallInsetMm) => set({ sidewallInsetMm })} />
-                <CheckField id="td-ssw-both" title="Both edges" checked={belt.sidewallsBoth} onChange={(sidewallsBoth) => set({ sidewallsBoth })} />
+                <LenField id="td-vg-il" title="Left guide indent" mm={belt.vgIndentLMm} system={system} onChange={(vgIndentLMm) => set({ vgIndentLMm })} />
+                <LenField id="td-vg-ir" title="Right guide indent" mm={belt.vgIndentRMm} system={system} onChange={(vgIndentRMm) => set({ vgIndentRMm })} />
               </div>
-              <SectionNote>
-                {sidewallPitch(belt)} mm pitch; footprint {fmtMm(sidewallFootprint(belt).fp, system)}, {fmtMm(sidewallFootprint(belt).th, system)} thick.
-                Flights need {fmtMm(MIN_FLIGHT_SIDEWALL_GAP_MM, system)} clear of the sidewall.
-              </SectionNote>
-            </>
-          )}
-        </div>
-      ) : (
-        <SectionNote>Sidewalls aren't offered on Series {belt.series}.</SectionNote>
-      )}
-
-      {vgOk ? (
-        <div className="space-y-4">
-          <CheckField id="td-vg" title="V-guides (K13)" checked={belt.vgOn} onChange={(vgOn) => set({ vgOn })} />
-          {belt.vgOn && (
-            <>
-              <ChoiceButtons<string>
-                title="Number of guides"
-                value={String(belt.vgCount)}
-                columns={4}
-                onChange={(n) => set({ vgCount: Number(n) })}
-                options={['1', '2', '3', '4'].map((n) => ({ value: n, label: n, detail: n === '1' ? 'Centered' : n === '4' ? 'Two centered pairs' : undefined }))}
-              />
-              {belt.vgCount === 4 ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <LenField id="td-vg-outer" title="Outer pair spacing (centers)" mm={belt.vgOuterSpMm} system={system} onChange={(vgOuterSpMm) => set({ vgOuterSpMm })} />
-                  <LenField id="td-vg-inner" title="Inner pair spacing (centers)" mm={belt.vgInnerSpMm} system={system} onChange={(vgInnerSpMm) => set({ vgInnerSpMm })} />
-                </div>
-              ) : belt.vgCount >= 2 ? (
+              {belt.vgCount === 3 && (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <LenField id="td-vg-il" title="Left guide indent" mm={belt.vgIndentLMm} system={system} onChange={(vgIndentLMm) => set({ vgIndentLMm })} />
-                    <LenField id="td-vg-ir" title="Right guide indent" mm={belt.vgIndentRMm} system={system} onChange={(vgIndentRMm) => set({ vgIndentRMm })} />
-                  </div>
-                  {belt.vgCount === 3 && (
-                    <>
-                      <ChoiceButtons<string>
-                        title="Place the middle guide by"
-                        value={belt.vgMode}
-                        columns={2}
-                        onChange={(m) => set({ vgMode: m as TdBelt['vgMode'] })}
-                        options={[
-                          { value: 'channel', label: 'Channel width' },
-                          { value: 'centerline', label: 'Centerline' },
-                        ]}
-                      />
-                      {belt.vgMode === 'channel' ? (
-                        <LenField id="td-vg-ch" title="First channel width" mm={belt.vgChannelsMm[0] ?? 25.4} system={system} onChange={(c) => set((b) => ({ ...b, vgChannelsMm: [c, ...b.vgChannelsMm.slice(1)] }))} />
-                      ) : (
-                        <LenField id="td-vg-cl" title="Middle guide centerline from the left edge" mm={belt.vgCenterlinesMm[0] ?? 150} system={system} onChange={(c) => set((b) => ({ ...b, vgCenterlinesMm: [c, ...b.vgCenterlinesMm.slice(1)] }))} />
-                      )}
-                    </>
+                  <ChoiceButtons<string>
+                    title="Place the middle guide by"
+                    value={belt.vgMode}
+                    columns={2}
+                    onChange={(m) => set({ vgMode: m as TdBelt['vgMode'] })}
+                    options={[
+                      { value: 'channel', label: 'Channel width' },
+                      { value: 'centerline', label: 'Centerline' },
+                    ]}
+                  />
+                  {belt.vgMode === 'channel' ? (
+                    <LenField id="td-vg-ch" title="First channel width" mm={belt.vgChannelsMm[0] ?? 25.4} system={system} onChange={(c) => set((b) => ({ ...b, vgChannelsMm: [c, ...b.vgChannelsMm.slice(1)] }))} />
+                  ) : (
+                    <LenField id="td-vg-cl" title="Middle guide centerline from the left edge" mm={belt.vgCenterlinesMm[0] ?? 150} system={system} onChange={(c) => set((b) => ({ ...b, vgCenterlinesMm: [c, ...b.vgCenterlinesMm.slice(1)] }))} />
                   )}
                 </>
-              ) : null}
+              )}
             </>
-          )}
-        </div>
-      ) : (
-        <SectionNote>V-guides are only offered on Series 8140.</SectionNote>
+          ) : null}
+        </>
       )}
     </div>
   )
 }
+
+/** Flights and sidewalls in one step: sidewalls first, then flights built off them. */
+export function FlightsSidewallsPanel({ belt, set, system }: PanelProps) {
+  const a = accessories(belt)
+  const p = pitchMm(belt)
+  const rows = belt.flightSpacingMm / p
+  const offRow = Math.abs(rows - Math.round(rows)) > 1e-3
+  return (
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <Subhead>Sidewalls</Subhead>
+        {a.sidewalls ? <SidewallsSection belt={belt} set={set} system={system} /> : <SectionNote>This belt doesn't take sidewalls (manual data sheet).</SectionNote>}
+      </section>
+      {a.vguides && (
+        <section className="space-y-3">
+          <Subhead>V-guides</Subhead>
+          <VguidesSection belt={belt} set={set} system={system} />
+        </section>
+      )}
+      <section className="space-y-3">
+        <Subhead>Flights</Subhead>
+        {!a.flights ? (
+          <SectionNote>This belt doesn't take flights (manual data sheet).</SectionNote>
+        ) : (
+          <>
+            <CheckField id="td-flights" title="Flights" checked={belt.flightsOn} onChange={(flightsOn) => set({ flightsOn })} />
+            {belt.flightsOn && (
+              <>
+                <div className="space-y-2">
+                  <LenField
+                    id="td-spacing"
+                    title="Flight spacing"
+                    mm={belt.flightSpacingMm}
+                    system={system}
+                    onChange={(flightSpacingMm) => set({ flightSpacingMm })}
+                    helper={!offRow ? `${flightMult(belt)} rows × ${fmtMm(p, system)}.` : undefined}
+                    problem={offRow ? 'Flights sit on rows, so spacing is a whole number of rows. Pick one:' : undefined}
+                  />
+                  {offRow && belt.flightSpacingMm > 0 && (
+                    <SnapButtons
+                      options={snapToRows(belt.series, belt.flightSpacingMm / IN).map((s) => ({
+                        label: `${formatLen(s.lengthIn, system)} · ${s.rows} rows`,
+                        mm: s.lengthIn * IN,
+                      }))}
+                      onPick={(flightSpacingMm) => set({ flightSpacingMm })}
+                    />
+                  )}
+                </div>
+                {belt.vars.map((v, i) => (
+                  <div key={i} className="space-y-3">
+                    {belt.vars.length > 1 && (
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-base font-semibold">Variation {i + 1}</h4>
+                        {i > 0 && (
+                          <Button variant="ghost" className="min-h-[44px]" onClick={() => set((b) => ({ ...b, vars: b.vars.slice(0, 1) }))}>
+                            <Trash2 className="size-4" /> Remove
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    <VarEditor belt={belt} v={v} index={i} system={system} onChange={(nv) => set((b) => ({ ...b, vars: b.vars.map((x, j) => (j === i ? nv : x)) }))} />
+                  </div>
+                ))}
+                {belt.vars.length === 1 && (
+                  <Button
+                    variant="outline"
+                    className="min-h-[48px] text-base"
+                    onClick={() => set((b) => ({ ...b, vars: [...b.vars, { ...b.vars[0], startRow: b.vars[0].startRow + 1 }] }))}
+                  >
+                    <Plus className="size-5" /> Add a second flight variation
+                  </Button>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  )
+}
+

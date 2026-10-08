@@ -48,6 +48,9 @@ export default function App() {
               <Route path={ROUTES.tdConfigurator}>
                 <ToolGate toolId="td-configurator"><TdConfiguratorRoute /></ToolGate>
               </Route>
+              <Route path={ROUTES.tdConfiguratorSaved}>
+                <ToolGate toolId="td-configurator"><TdConfiguratorRoute /></ToolGate>
+              </Route>
               <Route path={ROUTES.onetrack}>
                 <ToolGate toolId="onetrack"><OnetrackHome /></ToolGate>
               </Route>

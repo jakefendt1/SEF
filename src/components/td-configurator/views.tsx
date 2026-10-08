@@ -3,12 +3,16 @@
 // Schematic: lengths along the belt and across it are scaled separately, as
 // in his. Conflicts are drawn in red where they are.
 import type { ReactNode } from 'react'
-import { effective, flightMult, pitchMm, sidewallFootprint, type TdBelt } from '@/lib/thermodrive/belt'
+import { effective, flightMult, pitchMm, sidewallFootprint, sidewallPitch, type TdBelt } from '@/lib/thermodrive/belt'
+import { flightOutline, sidewallWave } from '@/lib/thermodrive/shapes'
 import { VGUIDE_WIDTH_MM } from '@/lib/thermodrive/data'
 import { fmtMm } from '@/lib/thermodrive/format'
 import { driveBands, finalSpacingInfo, flightSegments, segHeight, vgChannels, vgPositions } from '@/lib/thermodrive/geometry'
 import { summaryRows } from '@/lib/thermodrive/summary'
 import { COLORS, beltEdge, beltFill } from './colors'
+import { FLIGHT_TYPES } from '@/lib/tdBulkDensity/data/flights'
+
+const FLIGHT_LABEL = Object.fromEntries(Object.entries(FLIGHT_TYPES).map(([k, v]) => [k, v.label])) as Record<keyof typeof FLIGHT_TYPES, string>
 import type { UnitSystem } from '@/lib/tdBulkDensity/units'
 
 function Empty({ children, h = 160 }: { children: ReactNode; h?: number }) {
@@ -87,7 +91,16 @@ export function TopView({ belt, system, warnIds, id }: { belt: TdBelt; system: U
       )}
       {b.sidewallsOn &&
         [b.sidewallInsetMm, ...(b.sidewallsBoth ? [b.widthMm - b.sidewallInsetMm - fp] : [])].map((y0) => (
-          <rect key={y0} x={mx} y={Y(y0)} width={bw} height={Math.max(3, Y(y0 + fp) - Y(y0))} fill={COLORS.sidewall} opacity={0.75} />
+          <g key={y0}>
+            <rect x={mx} y={Y(y0)} width={bw} height={Math.max(2, Y(y0 + fp) - Y(y0))} fill={COLORS.sidewall} opacity={0.18} />
+            {/* The corrugation: a sine wave at the sidewall pitch, inside its footprint. */}
+            <polyline
+              points={sidewallWave(L, sidewallPitch(b), y0, sidewallFootprint(b)).map(([x, z]) => `${X(x)},${Y(z)}`).join(' ')}
+              fill="none"
+              stroke={COLORS.sidewall}
+              strokeWidth={2}
+            />
+          </g>
         ))}
       {b.vgOn &&
         vgPositions(b).map((c) => (
@@ -102,6 +115,10 @@ export function TopView({ belt, system, warnIds, id }: { belt: TdBelt; system: U
           const segs = flightSegments(b, v).segs
           const bad = flightTrouble(warnIds, i)
           const color = bad ? COLORS.flag : COLORS.flight[i]
+          const out = flightOutline(v)
+          const u0 = Math.min(...out.map(([u]) => u))
+          const u1 = Math.max(...out.map(([u]) => u))
+          const barW = Math.max(6, X(u1 - u0) - X(0))
           return Array.from({ length: 4 }, (_, k) => {
             const x = X((v.startRow + k * mult) * p)
             return (
@@ -109,7 +126,7 @@ export function TopView({ belt, system, warnIds, id }: { belt: TdBelt; system: U
                 {segs.map(([a, c], j) => {
                   const y1 = Y(Math.max(0, Math.min(b.widthMm, a)))
                   const y2 = Y(Math.max(0, Math.min(b.widthMm, c)))
-                  return y2 > y1 ? <rect key={j} x={x - 4} y={y1} width={8} height={y2 - y1} rx={2} fill={color} /> : null
+                  return y2 > y1 ? <rect key={j} x={x + X(u0) - mx} y={y1} width={barW} height={y2 - y1} rx={2} fill={color} /> : null
                 })}
               </g>
             )
@@ -249,13 +266,52 @@ export function CrossView({ belt, system, warnIds, id }: { belt: TdBelt; system:
         vgPositions(b).map((c) => {
           const w = Math.max(6, (VGUIDE_WIDTH_MM / b.widthMm) * bw)
           const cx = X(c)
-          const y = bTop + bTh
-          return <path key={c} d={`M${cx - w / 2} ${y} L${cx + w / 2} ${y} L${cx + w * 0.3} ${y + 12} L${cx - w * 0.3} ${y + 12} Z`} fill={COLORS.vguide} />
+          // On the same face as the flights and sidewalls (manual Fig. 9-10): 0.512 in base, 0.315 in tall.
+          const h = Math.max(8, 0.315 * 25.4 * vs)
+          return <path key={c} d={`M${cx - w / 2} ${bTop} L${cx + w / 2} ${bTop} L${cx + w * 0.3} ${bTop - h} L${cx - w * 0.3} ${bTop - h} Z`} fill={COLORS.vguide} />
         })}
       {dims.map((d, k) => (
         <HDim key={k} x1={X(d.a)} x2={X(d.c)} y={bTop + bTh + 40 + k * 30} label={d.label} color={d.color} />
       ))}
       <HDim x1={mx} x2={mx + bw} y={bTop + bTh + 40 + dims.length * 30} label={`belt width ${fmtMm(b.widthMm, system)}`} />
+    </svg>
+  )
+}
+
+/** Side view along the belt: each variation's real flight profile, three in a row, with the sidewall height. */
+export function SideView({ belt, system, id }: { belt: TdBelt; system: UnitSystem; id?: string }) {
+  const b = effective(belt)
+  if (!b.flightsOn || !b.vars.some((v) => v.heightMm > 0)) return <Empty>Pick a flight type and height to see the flights from the side.</Empty>
+  const W = 900
+  const mx = 50
+  const S = flightMult(b) * pitchMm(b)
+  const tallest = Math.max(...b.vars.map((v) => v.heightMm), b.sidewallsOn ? b.sidewallHeightIn * 25.4 : 0)
+  const L = 2.6 * S
+  const sc = Math.min((W - 2 * mx) / L, 170 / tallest)
+  const base = 30 + tallest * sc
+  const H = base + 70
+  const X = (mm: number) => mx + mm * sc
+  const Y = (mm: number) => base - mm * sc
+  return (
+    <svg id={id} fontFamily="Arial, Helvetica, sans-serif" viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Side view of the flights">
+      <rect width={W} height={H} fill="#fff" />
+      <Travel x={W - mx - 150} y={18} />
+      {b.sidewallsOn && (
+        <rect x={X(0)} y={Y(b.sidewallHeightIn * 25.4)} width={L * sc} height={b.sidewallHeightIn * 25.4 * sc} fill={COLORS.sidewall} opacity={0.15} stroke={COLORS.sidewall} strokeDasharray="4 3" />
+      )}
+      <rect x={X(0)} y={base} width={L * sc} height={8} fill={beltFill(b)} stroke={beltEdge(b)} />
+      {b.vars.map((v, i) =>
+        [0, 1, 2].map((k) => {
+          const x0 = 0.3 * S + k * S + i * pitchMm(b) * (v.startRow - b.vars[0].startRow)
+          const pts = flightOutline(v).map(([u, h]) => `${X(x0 + u)},${Y(h)}`).join(' ')
+          return <polygon key={`${i}-${k}`} points={pts} fill={COLORS.flight[i]} fillOpacity={0.85} stroke={COLORS.flight[i]} />
+        }),
+      )}
+      <HDim x1={X(0.3 * S)} x2={X(1.3 * S)} y={base + 40} label={`spacing ${fmtMm(S, system)}`} />
+      <text x={mx} y={H - 6} fontSize={14} fill={COLORS.dim}>
+        {b.vars.map((v, i) => `${b.vars.length > 1 ? `V${i + 1}: ` : ''}${FLIGHT_LABEL[v.flightType]} ${fmtMm(v.heightMm, system)}`).join('   ')}
+        {b.sidewallsOn ? `   ·   sidewall ${b.sidewallHeightIn} in (dashed)` : ''}
+      </text>
     </svg>
   )
 }

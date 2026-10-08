@@ -24,10 +24,29 @@ export interface Segments {
   computedFlightWMm?: number
 }
 
-/** Flight segments across the width for one variation (his flightSegments). */
-export function flightSegments(b: Pick<TdBelt, 'widthMm'>, v: FlightVar): Segments {
+/** Notches cut at fixed places: one on the centerline, or one over each drive lug. */
+function fixedNotches(b: Pick<TdBelt, 'widthMm' | 'series' | 'style'>, v: FlightVar): [number, number][] {
+  const w = v.notchWMm
+  const centers = v.notchMode === 'center' ? [b.widthMm / 2] : driveBands(b).map(([a, c]) => (a + c) / 2)
+  return centers.map((c) => [c - w / 2, c + w / 2])
+}
+
+/** Flight segments across the width for one variation (his flightSegments, plus center and lug notches). */
+export function flightSegments(b: Pick<TdBelt, 'widthMm' | 'series' | 'style'>, v: FlightVar): Segments {
   const start = v.indentLMm
   const end = b.widthMm - v.indentRMm
+  if (v.notchOn && (v.notchMode === 'center' || (v.notchMode === 'lugs' && b.series === '8140'))) {
+    const segs: [number, number][] = []
+    let cur = start
+    let over = end < start
+    for (const [a, c] of fixedNotches(b, v)) {
+      if (a < start - EPS || c > end + EPS) over = true
+      if (a > cur + EPS) segs.push([cur, Math.min(a, end)])
+      cur = Math.max(cur, c)
+    }
+    if (cur < end - EPS) segs.push([cur, end])
+    return { segs, over }
+  }
   if (v.notchOn && v.notchMode === 'position') {
     const notches: [number, number][] = []
     for (let i = 0; i < v.notchCount; i++) {
@@ -81,7 +100,9 @@ export function driveBands(b: Pick<TdBelt, 'series' | 'style' | 'widthMm'>): [nu
   if (b.series !== '8140') return [[0, b.widthMm]]
   const half = DRIVE_LUG_WIDTH_MM / 2
   const cl = b.widthMm / 2
-  if (/DUAL LUG/i.test(b.style)) {
+  // Dual lug: 24.13 in between lug centers -- the manual's dual-lug sprocket
+  // layout is two 6 in sprockets 30.13 in over their outer faces (p.64).
+  if (/DUAL[- ]LUG/i.test(b.style)) {
     const off = DRIVE_DUAL_CENTERS_MM / 2
     return [
       [cl - off - half, cl - off + half],

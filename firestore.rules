@@ -103,6 +103,10 @@ service cloud.firestore {
       match /onetrackBoms/{bomId} {
         allow read, write: if isOwner(uid) && hasTool('onetrack');
       }
+
+      match /tdConfigurations/{configId} {
+        allow read, write: if isOwner(uid) && hasTool('td-configurator');
+      }
     }
 
     match /{document=**} {

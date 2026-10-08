@@ -4,7 +4,10 @@
 import type { Warning } from '../tdBulkDensity/types'
 import { formatLen, type UnitSystem } from '../tdBulkDensity/units'
 import { IN, MIN_FLIGHT_SIDEWALL_GAP_MM, VGUIDE_EDGE_CLEARANCE_MM, VGUIDE_MIN_CHANNEL_MM, VGUIDE_WIDTH_MM } from './data'
-import { effective, flightMult, pitchMm, sidewallFootprint, type TdBelt } from './belt'
+import { FLIGHT_TYPES } from '../tdBulkDensity/data/flights'
+import type { Series } from '../tdBulkDensity/types'
+import { effective, flightMult, flightOptions, pitchMm, sidewallFootprint, type TdBelt } from './belt'
+import { DRIVE_LABEL, findProduct } from './products'
 import {
   edgeFeatureClearances,
   finalSpacingInfo,
@@ -61,6 +64,26 @@ export function validateBelt(belt: TdBelt, system: UnitSystem = 'imperial'): War
   const vName = (i: number) => (many ? `Flight variation ${i + 1}` : 'Flights')
   if (!(b.widthMm > 0)) return out
 
+  // ---- The belt's data sheet (2026 ThermoDrive Engineering Manual) ----
+  const pr = findProduct(b)
+  if (pr) {
+    const w = b.widthMm / IN
+    if (w < pr.minWidthIn - 1e-3 || w > pr.maxWidthIn + 1e-3) {
+      const what = pr.drive === 'dual-lug' ? `${DRIVE_LABEL[pr.drive]} ${b.series} belts` : `${b.series} ${pr.surface} ${pr.material} belts`
+      out.push(
+        warn(
+          'width-range',
+          'error',
+          `${what} are ${formatLen(pr.minWidthIn, system)} to ${formatLen(pr.maxWidthIn, system)} wide; this one is ${L(b.widthMm)}.${pr.drive === 'dual-lug' && w < pr.minWidthIn ? ' The two drive lugs are 24.13 in apart, so a narrower belt puts them at its edges.' : ''}`,
+          pr.drive === 'dual-lug' && w < pr.minWidthIn ? 'Use a single-lug belt, or widen it to at least 30 in.' : 'Pick a width in that range or another belt.',
+        ),
+      )
+    }
+    if (b.joining === 'ThermoLace HDE' && Math.abs(w * 2 - Math.round(w * 2)) > 1e-3) {
+      out.push(warn('lace-joining-width', 'warning', `ThermoLace HDE loops are on a 1/2 in pitch, so they can't stay centered on a ${L(b.widthMm)} belt.`, `A ${formatLen(Math.floor(w * 2) / 2, system)} or ${formatLen(Math.floor(w * 2) / 2 + 0.5, system)} belt takes the lace centered.`))
+    }
+  }
+
   // ---- Length on a whole row ----
   if (b.lengthMm > 0 && !isPitchIncrement(b)) {
     const snaps = snapToRows(b.series, b.lengthMm / IN)
@@ -91,6 +114,35 @@ export function validateBelt(belt: TdBelt, system: UnitSystem = 'imperial'): War
     b.vars.forEach((v, i) => {
       const seg = flightSegments(b, v)
       if (!(v.heightMm > 0)) out.push(warn(`height-${i}`, 'warning', `${vName(i)}: enter a flight height.`, ''))
+      else {
+        // Flight type rules, from the manual's flight pages (p.75-77), shared with Bulk Density.
+        const ft = FLIGHT_TYPES[v.flightType]
+        const o = flightOptions(v.flightType)
+        const h = v.heightMm / IN
+        const ok = o.heightsIn ? o.heightsIn.some((x) => Math.abs(x - h) < 0.01) : h >= o.minIn - 0.01 && h <= o.maxIn + 0.01
+        if (!ok) {
+          out.push(
+            warn(
+              `flight-height-${i}`,
+              'error',
+              `${vName(i)}: ${ft.label}s come ${o.heightsIn ? `in ${o.heightsIn.join(', ')} in heights` : `${o.minIn} to ${o.maxIn} in high`}, not ${L(v.heightMm)} (${ft.cite}).`,
+              'Pick an offered height.',
+            ),
+          )
+        }
+        if (!o.thicknessesIn.some((x) => Math.abs(x - v.thicknessMm / IN) < 0.01)) {
+          out.push(warn(`flight-thickness-${i}`, 'warning', `${vName(i)}: ${ft.label}s come ${o.thicknessesIn.join(', ')} in thick.`, 'Pick an offered thickness.'))
+        }
+        const calcSeries = (b.series === '8126' ? 'S8026' : `S${b.series}`) as Series
+        const minS = ft.minSpacingIn[calcSeries]
+        if (b.flightSpacingMm / IN < minS - 0.01) {
+          out.push(warn(`flight-spacing-min-${i}`, 'error', `${vName(i)}: ${ft.label}s on ${b.series} need at least ${formatLen(minS, system)} spacing (${ft.cite}).`, 'Increase the spacing.'))
+        }
+        const longest = Math.max(0, ...seg.segs.map(([a, c]) => c - a))
+        if (longest / IN > o.maxLengthIn + 0.01) {
+          out.push(warn(`flight-length-${i}`, 'error', `${vName(i)}: a flight piece is ${L(longest)} long; ${ft.label}s are ${formatLen(o.maxLengthIn, system)} max (p.75).`, 'Add a notch or ask Customer Service about multiple flights across the width.'))
+        }
+      }
       if (seg.over) {
         const what =
           v.notchOn && v.notchMode === 'position'

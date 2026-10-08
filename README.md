@@ -18,8 +18,10 @@ account manager uses on site:
 - **ThermoDrive Belt Configurator** (beta) — lays out a ThermoDrive belt
   (flights and notches, sidewalls, V-guides, splice, ThermoLace repair,
   sections) and checks it against the fabrication rules, with a 3D view and a
-  build sheet for CS. Rebuilt from Patrick's Belt Configurator; saves nothing.
-  Belts move between it and the Bulk Density calculator by link.
+  build sheet for CS. Rebuilt from Patrick's Belt Configurator; products come
+  from the manual's data sheets, flights in all four types, sidewalls drawn
+  corrugated. Belts can be saved, and move between it and the Bulk Density
+  calculator by link.
 - **OneTrack BOM Builder** (beta) — pick OneTrack parts on the plant floor,
   measure wearstrip with a guided worksheet, and send CS a part-numbered BOM
   as a PDF or pasted into an email.
@@ -101,6 +103,7 @@ describing the same thing, drifting apart.
 | Nominal pitch per belt series | `schema/beltSeries.ts` | `beltElongation.test.ts` asserts no duplicate series and a usable pitch for each |
 | Elongation thresholds *and the wording that goes with them* | `lib/beltElongation.ts` → `verdictFor` | `beltElongation.test.ts`; the gauge, the pill and the big number all style from `belt-elongation/levelStyles.ts` |
 | Bulk density manual tables (flights, sidewalls, indents) | `lib/tdBulkDensity/data/` | `engine.test.ts`; the dropdowns and the rule checks both read `rules.ts` → `availableOptions` |
+| ThermoDrive products (style, material, colors, width range, joining, which accessories) | `lib/thermodrive/products.ts`, one row per data sheet in the 2026 ThermoDrive manual | `geometry.test.ts` (dual lug 30-60 in, Dura flights only) |
 | ThermoDrive belt rules (pitch, rows, splice, sidewall gap, V-guides, max section, ThermoLace, sections) | `lib/thermodrive/` (`data.ts` is Patrick's constants verbatim) | `parity.test.ts` matches his own page on 9 belts; Bulk Density's spacing check reads `rows.ts` |
 | Bulk density illustration colours | `components/td-bulk-density/palette.ts` | Every view, the legend and the charts read it |
 | OneTrack part numbers, descriptions, units | `lib/onetrack/data/menu.ts` (raw, from `../Onetrack/data/onetrack-catalog.json`) → `lib/onetrack/catalog.ts` | `catalog.test.ts`: 95 part numbers, all well-formed and unique |
@@ -163,8 +166,11 @@ progress; anything they genuinely cannot measure gets marked
   of the part numbers and quantities they produced. Photos are **not** in it:
   they stay in the device's IndexedDB (`lib/onetrack/photos.ts`)
 
-The Belt Elongation Check and the Belt Configurator have no collection: they
-compute and discard.
+- `users/{uid}/tdConfigurations/{id}` — a saved configurator belt
+  (`StoredTdConfig` in `lib/tdConfigRecord.ts`): the belt in mm, its repair
+  and section settings, units, customer and reference
+
+The Belt Elongation Check has no collection: it computes and discards.
 
 - `accessRequests/{email}__{toolId}` — a request for a greyed-out tool
   (`lib/accessRequests.ts`); the requester writes their own, the admin reads

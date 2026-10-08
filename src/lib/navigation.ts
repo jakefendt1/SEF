@@ -17,6 +17,8 @@ export const ROUTES = {
   /** A saved run, reopened. */
   tdBulkDensityRun: '/td-bulk-density/:id',
   tdConfigurator: '/td-configurator',
+  /** A saved belt, reopened. */
+  tdConfiguratorSaved: '/td-configurator/:id',
   onetrack: '/onetrack',
   /** A saved BOM, reopened. */
   onetrackBom: '/onetrack/:id',
@@ -179,6 +181,10 @@ export function resolveNav(path: string): NavContext {
 
   if (p === ROUTES.tdConfigurator) {
     return { title: 'ThermoDrive Belt Configurator', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
+  }
+
+  if (p.startsWith(`${ROUTES.tdConfigurator}/`)) {
+    return { title: 'Saved belt', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
   }
 
   if (p === ROUTES.onetrack) {

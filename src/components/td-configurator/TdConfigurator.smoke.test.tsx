@@ -59,6 +59,7 @@ describe('TdConfiguratorHome', () => {
     }
     const summary = renderToStaticMarkup(<SummaryTable belt={belt} system="imperial" />)
     expect(summary).toContain('V-guides')
-    expect(summary).toContain('Dual lug')
+    expect(summary).toContain('Single lug')
+    expect(summary).toContain('90-degree flight')
   })
 })
