@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareRuns } from './compare'
+import { compareNames, compareRuns, compareTable } from './compare'
 import { computeTdBulkDensity } from './compute'
 import { makeInputs } from './defaults'
 import { angleSweep, sidewallSweep, spacingSweep } from './sweeps'
@@ -69,5 +69,30 @@ describe('A/B compare (plan §7.5)', () => {
   it('says so when nothing changed', () => {
     const A = computeTdBulkDensity(base, 'coarse')
     expect(compareRuns(A, A, 'imperial').summary).toMatch(/^No input changes: /)
+  })
+})
+
+describe('side-by-side compare', () => {
+  it('a 24 in vs 30 in belt: one input differs, results say what the width bought', () => {
+    const inputs = { ...base, beltWidthIn: 24, targetLbPerHr: 2625 }
+    const A = computeTdBulkDensity(inputs, 'coarse')
+    const B = computeTdBulkDensity({ ...inputs, beltWidthIn: 30 }, 'coarse')
+    const t = compareTable(A, B, 'imperial')
+    expect(t.inputs.filter((r) => r.changed).map((r) => r.label)).toEqual(['Belt width'])
+    expect(compareNames(A, B, 'imperial')).toEqual({ a: 'A · 24 in', b: 'B · 30 in' })
+    const thr = t.results.find((r) => r.label === 'Throughput at belt speed')!
+    expect(thr.delta).toMatch(/^\+\d+%$/)
+    expect(thr.better).toBe(true)
+    const minSpeed = t.results.find((r) => r.label === 'Minimum belt speed')!
+    expect(minSpeed.better).toBe(true)
+    expect(t.results.find((r) => r.label === 'Edge loss')!.delta ?? '').toMatch(/^$|pts$/)
+  })
+
+  it('identical runs: nothing changed, no deltas, plain A / B names', () => {
+    const A = computeTdBulkDensity(base, 'coarse')
+    const t = compareTable(A, A, 'imperial')
+    expect(t.inputs.some((r) => r.changed)).toBe(false)
+    expect(t.results.every((r) => r.delta === null && r.better === null)).toBe(true)
+    expect(compareNames(A, A, 'imperial')).toEqual({ a: 'A', b: 'B' })
   })
 })

@@ -12,7 +12,7 @@
 // row, and page furniture drawn in one pass over every page at the end.
 import { jsPDF } from 'jspdf'
 import { INTRALOX_LOGO_PNG, INTRALOX_LOGO_SIZE } from '../assets/intralox-logo-pdf'
-import { compareRuns, containmentLabel } from './tdBulkDensity/compare'
+import { compareNames, compareRuns, compareTable, containmentLabel } from './tdBulkDensity/compare'
 import type { TdComputed } from './tdBulkDensity/compute'
 import { FLIGHT_TYPES, SERIES_LABEL } from './tdBulkDensity/data/flights'
 import { GRID } from './tdBulkDensity/heap3d'
@@ -369,19 +369,12 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
     heading('A / B comparison', 40)
     paragraph(c.summary, 10.5, INK)
     if (c.changes.length > 1) for (const ch of c.changes) paragraph(`•  ${ch}`, 9, GRAY)
+    const table = compareTable(a, r, sys)
+    const names = compareNames(a, r, sys)
     rows([
-      ['', 'A (pinned)  |  B (this result)'],
-      ['Flight ends', `${containmentLabel(a.inputs, sys)}  |  ${containmentLabel(i, sys)}`],
-      ['Product per flight', `${formatQty(a.throughput?.massPerFlightLb ?? 0, 'mass', sys)}  |  ${formatQty(t.massPerFlightLb, 'mass', sys)}`],
-      [
-        'Throughput',
-        `${a.throughput?.throughputLbPerHr != null ? formatQty(a.throughput.throughputLbPerHr, 'massRate', sys) : '—'}  |  ${t.throughputLbPerHr !== null ? formatQty(t.throughputLbPerHr, 'massRate', sys) : '—'}`,
-      ],
-      [
-        'Min. belt speed',
-        `${a.throughput?.minSpeedFpm != null ? formatQty(a.throughput.minSpeedFpm, 'speed', sys) : '—'}  |  ${t.minSpeedFpm !== null ? formatQty(t.minSpeedFpm, 'speed', sys) : '—'}`,
-      ],
-      ['Edge loss', `${a.edgeLossPct.toFixed(0)}%  |  ${r.edgeLossPct.toFixed(0)}%`],
+      ['', `${names.a}  |  ${names.b}`],
+      ...table.results.map((row): [string, string] => [row.label, `${row.a}  |  ${row.b}${row.delta ? `   (${row.delta})` : ''}`]),
+      ...table.inputs.filter((row) => row.changed).map((row): [string, string] => [row.label, `${row.a}  |  ${row.b}`]),
     ])
     const ci = args.compare.images
     if (ci?.a || ci?.b) {
@@ -393,7 +386,7 @@ export function buildTdPdf(args: TdPdfArgs): TdPdfResult & { pdf: jsPDF } {
       y += h + 3
       setText(GRAY)
       normal(8)
-      text('A (left) and B (right).', MARGIN, y)
+      text(`${names.a} (left) and ${names.b} (right).`, MARGIN, y)
       y += 6
     }
   }

@@ -9,6 +9,7 @@ import { Router } from 'wouter'
 import { computeTdBulkDensity } from '@/lib/tdBulkDensity/compute'
 import { initialForm, type TdForm } from '@/lib/tdBulkDensity/form'
 import { makeInputs } from '@/lib/tdBulkDensity/defaults'
+import { CompareStrip } from './CompareStrip'
 import { ConveyorStep } from './ConveyorStep'
 import { EdgeStep } from './EdgeStep'
 import { EndSection } from './EndSection'
@@ -105,5 +106,20 @@ describe('3D layers panel', () => {
     expect(html).not.toContain('id="opacity-ghost"')
     expect(html).toContain('35% solid')
     expect(html).toContain('Reset layers')
+  })
+})
+
+describe('CompareStrip', () => {
+  it('shows A and B side by side, named by the one input that differs', () => {
+    const inputs = makeInputs({ beltWidthIn: 24, flightHeightIn: 4, flightSpacingIn: 8, inclineDeg: 45, reposeDeg: 35, beltSpeedFpm: 60, densityLbFt3: 20 })
+    const a = computeTdBulkDensity(inputs, 'coarse')
+    const b = computeTdBulkDensity({ ...inputs, beltWidthIn: 30 }, 'coarse')
+    const html = renderToStaticMarkup(<CompareStrip a={a} b={b} system="imperial" onUnpin={noop} onRestoreA={noop} />)
+    expect(html).toContain('A · 24 in')
+    expect(html).toContain('B · 30 in')
+    expect(html).toContain('Throughput at belt speed')
+    expect(html).toContain('Belt width')
+    const waiting = renderToStaticMarkup(<CompareStrip a={a} b={null} system="imperial" onUnpin={noop} onRestoreA={noop} />)
+    expect(waiting).toContain('B updates as you go')
   })
 })

@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ROUTES } from '@/lib/navigation'
 import { PDF_EXPORT_MESSAGES } from '@/lib/statusLabels'
+import { compareNames } from '@/lib/tdBulkDensity/compare'
 import { computeTdBulkDensity, type TdComputed } from '@/lib/tdBulkDensity/compute'
 import { findPreset } from '@/lib/tdBulkDensity/data/products'
 import { governingKindsPresent } from '@/lib/tdBulkDensity/fieldSlices'
@@ -183,6 +184,10 @@ export function TdBulkDensityHome() {
   const stepMissing = (id: StepId) => missing.filter((m) => m.step === id).length
   const firstMissingStep = missing.length ? STEPS.findIndex((s) => s.id === missing[0].step) : -1
   const nonInfo = result ? result.warnings.filter((w) => w.severity !== 'info').length : 0
+  const names = useMemo(
+    () => (pinned ? compareNames(pinned.result, shown, form.system) : { a: 'A', b: 'B' }),
+    [pinned, shown, form.system],
+  )
 
   // ---- Handlers ----
   const handleUnits = (next: UnitSystem) => setForm((f) => convertForm(f, next))
@@ -384,10 +389,10 @@ export function TdBulkDensityHome() {
                       className="min-h-[44px]"
                       onClick={() => {
                         setPinned({ result: shown, form })
-                        toast('Pinned as A. Change anything to compare.')
+                        toast('This run is now A. Change anything (say the belt width) and B shows side by side.')
                       }}
                     >
-                      <Pin className="size-4" /> {pinned ? 'Re-pin A' : 'Pin as A'}
+                      <Pin className="size-4" /> {pinned ? 'Make this A' : 'Compare'}
                     </Button>
                   )}
                   <Button variant="outline" className="min-h-[44px]" onClick={() => setShow3D((v) => !v)} aria-expanded={show3D}>
@@ -409,13 +414,13 @@ export function TdBulkDensityHome() {
                       (pinned?.result.heap ? (
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div>
-                            <p className="text-sm font-semibold mb-1">A — pinned</p>
+                            <p className="text-sm font-semibold mb-1">{names.a} (pinned)</p>
                             <Suspense fallback={<Loading3D />}>
                               <Pocket3D result={pinned.result} inputs={pinned.result.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasA} layers={layers} />
                             </Suspense>
                           </div>
                           <div>
-                            <p className="text-sm font-semibold mb-1">B — now</p>
+                            <p className="text-sm font-semibold mb-1 text-brand">{names.b} (now)</p>
                             <Suspense fallback={<Loading3D />}>
                               <Pocket3D result={shown} inputs={shown.inputs} cutX={cutX} cutZ={cutZ} onCanvas={setCanvasB} layers={layers} />
                             </Suspense>
