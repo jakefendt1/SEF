@@ -33,7 +33,7 @@ describe('TdConfiguratorHome', () => {
     )
     expect(html).toContain('ThermoDrive Belt Configurator')
     expect(html).toContain('1. Product')
-    expect(html).toContain('Enter a belt width to see the top view')
+    expect(html).toContain('Loading 3D view')
   })
 
   it('opens a handed-over belt with its note', () => {
