@@ -1,5 +1,7 @@
 import { FLIGHT_TYPES, FLIGHT_TYPE_ORDER, SCOOP_LIPS, scoopReachIn } from '@/lib/tdBulkDensity/data/flights'
-import { readField } from '@/lib/tdBulkDensity/form'
+import { fromCalculatorSeries } from '@/lib/thermodrive/data'
+import { offRowSnaps } from '@/lib/thermodrive/rows'
+import { fieldText, readField } from '@/lib/tdBulkDensity/form'
 import { scoopBodyIn } from '@/lib/tdBulkDensity/profiles'
 import { availableOptions } from '@/lib/tdBulkDensity/rules'
 import type { FlightType } from '@/lib/tdBulkDensity/types'
@@ -15,6 +17,7 @@ export function FlightStep({ form, set }: StepProps) {
   const thick = Number(form.flightThickness) || 0.16
   const spacing = readField(form, 'flightSpacing')
   const tooClose = spacing !== null && spacing < minS - 0.01
+  const snaps = spacing !== null ? offRowSnaps(fromCalculatorSeries(form.series), spacing) : null
 
   return (
     <div className="space-y-5">
@@ -84,6 +87,25 @@ export function FlightStep({ form, set }: StepProps) {
             : undefined
         }
       />
+      {snaps && !tooClose && (
+        <div className="rounded-lg border border-warning-orange/40 bg-warning-orange/5 px-3 py-2 space-y-2" role="status">
+          <p className="text-base">
+            Flights sit on belt rows, so the spacing is a whole number of rows. Use:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {snaps.map((x) => (
+              <button
+                key={x.rows}
+                type="button"
+                onClick={() => set({ flightSpacing: fieldText(x.lengthIn, 'flightSpacing', sys) })}
+                className="min-h-[48px] rounded-lg border border-brand bg-white px-3 text-base font-semibold text-brand"
+              >
+                {formatLen(x.lengthIn, sys)} ({x.rows} rows)
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

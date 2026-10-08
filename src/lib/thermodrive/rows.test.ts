@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { CONFIG, BELT_SERIES, PITCH_MM, fromCalculatorSeries } from './data'
-import { pitchIn, snapToRows, wholeRows } from './rows'
+import { computeTdBulkDensity } from '../tdBulkDensity/compute'
+import { makeInputs } from '../tdBulkDensity/defaults'
+import { offRowSnaps, pitchIn, snapToRows, wholeRows } from './rows'
 import { SIDEWALL_OPTIONS } from '../tdBulkDensity/data/sidewalls'
 
 describe('ThermoDrive rows (ported from Patrick v0.65)', () => {
@@ -40,5 +42,22 @@ describe('ThermoDrive rows (ported from Patrick v0.65)', () => {
     expect(Object.keys(SIDEWALL_OPTIONS).map((s) => fromCalculatorSeries(s as 'S8050'))).toEqual(
       expect.arrayContaining(['8050', '8140']),
     )
+  })
+})
+
+describe('Bulk Density spacing check', () => {
+  it('P7: a typed spacing within 0.02 in of a row is on it; otherwise the rows either side', () => {
+    expect(offRowSnaps('8050', 7.824)).toBeNull()
+    expect(offRowSnaps('8050', 7.82)).toBeNull()
+    expect(offRowSnaps('8050', 8)!.map((x) => x.rows)).toEqual([4, 5])
+    expect(offRowSnaps('8050', 0)).toBeNull()
+  })
+
+  it('P8: the calculator warns (not blocks) on an off-row spacing, with the snaps as the fix', () => {
+    const w = (spacing: number) =>
+      computeTdBulkDensity(makeInputs({ series: 'S8050', flightSpacingIn: spacing }), 'coarse').warnings.find((x) => x.id === 'spacing-rows')
+    expect(w(8)!.severity).toBe('warning')
+    expect(w(8)!.fix).toBe('Use 7.824 in (4 rows) or 9.78 in (5 rows).')
+    expect(w(7.824)).toBeUndefined()
   })
 })

@@ -3,6 +3,8 @@
 //
 // The dropdown filters and the validator both read this file, so they cannot
 // drift apart -- the same lesson as REQUIRED_RULES in the Spiral Eval form.
+import { fromCalculatorSeries } from '../thermodrive/data'
+import { offRowSnaps, pitchIn } from '../thermodrive/rows'
 import { FLIGHT_TYPES } from './data/flights'
 import {
   CENTER_NOTCH_ADVICE_WIDTH_IN,
@@ -159,6 +161,19 @@ export function buildWarnings(
       message: `Flight spacing ${len(inputs.flightSpacingIn)} is below the ${len(minS)} minimum for ${ft.label.toLowerCase()}s on ${inputs.series} (${ft.cite}).`,
       cite: ft.cite,
       fix: `Increase spacing to at least ${len(minS)}${inputs.series === 'S8140' ? ' (or 2 rows)' : ''}.`,
+    })
+  }
+
+  // Flights sit on belt rows, so spacing is a whole number of pitches
+  // (Patrick's configurator snaps it; lib/thermodrive/rows.ts).
+  const snaps = offRowSnaps(fromCalculatorSeries(inputs.series), inputs.flightSpacingIn)
+  if (snaps) {
+    add({
+      id: 'spacing-rows',
+      severity: 'warning',
+      message: `Flight spacing ${len(inputs.flightSpacingIn)} isn't a whole number of ${inputs.series} rows (${len(pitchIn(fromCalculatorSeries(inputs.series)))} each). Flights can only sit on a row.`,
+      cite: '',
+      fix: `Use ${snaps.map((x) => `${len(x.lengthIn)} (${x.rows} rows)`).join(' or ')}.`,
     })
   }
 
