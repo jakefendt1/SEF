@@ -54,7 +54,7 @@ export const TOOLS: ToolDef[] = [
     title: 'AIM Glide ROI Calculator',
     shortTitle: 'ROI Calculator',
     description: 'Compare cost of ownership and ROI for AIM Glide vs. a traditional slat switch.',
-    credit: 'Developed by Jake Fendt',
+    credit: 'Developed by Jake Fendt and Helen Xi',
     href: ROUTES.aimGlide,
     icon: Calculator,
   },
