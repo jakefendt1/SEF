@@ -161,7 +161,8 @@ says if the answer changed; it never writes.
 
 ## Access: who can use which tool
 
-**Every tool is off until an admin turns it on.** Grants live at
+**Every tool is off until an admin turns it on**, except `DEFAULT_TOOL_IDS`
+(Belt Elongation Check, on for everyone). Grants live at
 `access/{email}` in Firestore (`lib/access.ts`), edited on the Manage access
 page (`/admin`, admins only). Keyed by email, so someone can be approved
 before they sign up. Admins are `ADMIN_EMAILS` in `lib/access.ts` **and**
@@ -187,8 +188,41 @@ Check the Manage access list for names you don't expect. If verification comes
 back, it needs a sender Intralox mail accepts (a custom SMTP / domain in
 Firebase Authentication -> Templates), not the default one.
 
+**Tools you don't have show greyed out with Request access.** A request is
+`accessRequests/{email}__{toolId}` (one per person per tool); it appears at
+the top of Manage access with Approve (grants and clears) and Decline. No
+email: Firebase's mail doesn't reach Intralox inboxes.
+
 **Beta is now just a chip.** `lib/betaAccess.ts` only labels a card "Beta";
 who can open it is the grant.
+
+## ThermoDrive Belt Configurator
+
+Rebuilt from Patrick's *Thermodrive Visualizer 2.0.260929.html* (v0.65, in
+`../TD Bulk Density/refs/From Patrick Colab/`). His file is the reference
+spec: `lib/thermodrive/data.ts` holds his constants verbatim and
+`geometry.ts` keeps his function names and logic. Don't "fix" a rule here
+without asking him; put it under Open questions instead.
+
+**Parity is tested against his page, not our reading of it.**
+`node scripts/thermodrive-parity.mjs` runs `parity.cases.json` through his
+HTML in headless Edge and writes `parity.patrick.json`; `parity.test.ts`
+holds the engine to it. Re-run it when he sends a new version, and add a case
+for any rule you touch.
+
+**One engine for both tools.** `validateBelt` returns warnings in the Bulk
+Density `Warning` shape. Bulk Density uses the snap-to-row check
+(`rows.ts`; within 0.02 in counts as on a row) as a warning, not a blocker.
+
+**The hand-off is a link, never storage.** `lib/thermodrive/handoff.ts`
+encodes only the belt into `?belt=`; each side carries the other's
+unmodelled fields (flight type and thickness one way; style, material,
+color, start row and length the other) so a round trip is lossless
+(`handoff.test.ts`). 8126 can't go to Bulk Density yet.
+
+**Simplifications against his tool:** the repair section reuses flight
+variation 1 and the belt spacing (his has its own variation editor); the 3D
+view shows the belt across the splice only, not the repair or sections.
 
 ## OneTrack BOM Builder
 
@@ -259,6 +293,13 @@ backslash-u escape sequences into literal characters on write, which lint then
 rejects as irregular whitespace. Check the file after editing that regex.
 
 ## Open questions — do not encode as fact
+
+- **For Patrick (configurator):** his sidewall heights (8050: 1, 2, 3, 4, 6 in;
+  8140: 1-4 in) differ from the manual's (2.3 in, 25 mm 2 in; no 1 in on
+  8140); V-guide-to-flight clearance uses the flights' indents though the
+  guides are under the belt; credit and co-ownership of the rules.
+- **Scoop bulletin, 4 mm standard scoop:** drawn 1.65 in from the product
+  face where 2.00 - 0.157 = 1.84 in. The engine uses reach - thickness.
 
 - **Quick-mode scope.** `schema/conditionals.ts` notes that Quick mode covering
   all of §3/§4 is a *proposed* interpretation pending confirmation from

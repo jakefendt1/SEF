@@ -13,11 +13,16 @@ account manager uses on site:
 - **ThermoDrive Bulk Density Calculator** — how much a flighted ThermoDrive
   incline carries per flight, the belt speed a line needs, and what sidewalls
   or guards add, with a 3D view of the pocket. Replaces CalcLab's Bulk Density
-  Calculator. Runs can be saved and exported as a customer or internal PDF.
+  Calculator. Runs can be saved and exported as a customer or internal PDF,
+  and two runs (say a 24 in and a 30 in belt) compared side by side.
+- **ThermoDrive Belt Configurator** (beta) — lays out a ThermoDrive belt
+  (flights and notches, sidewalls, V-guides, splice, ThermoLace repair,
+  sections) and checks it against the fabrication rules, with a 3D view and a
+  build sheet for CS. Rebuilt from Patrick's Belt Configurator; saves nothing.
+  Belts move between it and the Bulk Density calculator by link.
 - **OneTrack BOM Builder** (beta) — pick OneTrack parts on the plant floor,
   measure wearstrip with a guided worksheet, and send CS a part-numbered BOM
-  as a PDF or pasted into an email. Visible only to the people in
-  `lib/betaAccess.ts` until launch.
+  as a PDF or pasted into an email.
 
 The tools sit behind one login, so a user's work follows them between devices.
 
@@ -54,6 +59,8 @@ src/
   lib/           Pure logic + Firebase adapters (no JSX)
     tdBulkDensity/ The bulk density engine (pure TS, runs in a Web Worker),
                  manual data tables, rules, and reference/pile.py
+    thermodrive/ Belt rules shared by both ThermoDrive tools, ported from
+                 Patrick's configurator, plus the hand-off and build sheet
   store/         zustand stores; the only things that talk to Firestore
   components/
     shell/       App chrome: header, back navigation, dashboard
@@ -62,6 +69,7 @@ src/
     belt-elongation/ The elongation check, including the drawn how-to-measure
                  diagram and tape-measure reference
     td-bulk-density/ The bulk density calculator's screens, views and charts
+    td-configurator/ The belt configurator's panels, 2D/3D views, build sheet
     ui/          shadcn primitives (generated; avoid hand-editing)
   pdf/           React-PDF document for the evaluation export
 public/          Static assets, including the in-app measurement diagrams
@@ -93,6 +101,7 @@ describing the same thing, drifting apart.
 | Nominal pitch per belt series | `schema/beltSeries.ts` | `beltElongation.test.ts` asserts no duplicate series and a usable pitch for each |
 | Elongation thresholds *and the wording that goes with them* | `lib/beltElongation.ts` → `verdictFor` | `beltElongation.test.ts`; the gauge, the pill and the big number all style from `belt-elongation/levelStyles.ts` |
 | Bulk density manual tables (flights, sidewalls, indents) | `lib/tdBulkDensity/data/` | `engine.test.ts`; the dropdowns and the rule checks both read `rules.ts` → `availableOptions` |
+| ThermoDrive belt rules (pitch, rows, splice, sidewall gap, V-guides, max section, ThermoLace, sections) | `lib/thermodrive/` (`data.ts` is Patrick's constants verbatim) | `parity.test.ts` matches his own page on 9 belts; Bulk Density's spacing check reads `rows.ts` |
 | Bulk density illustration colours | `components/td-bulk-density/palette.ts` | Every view, the legend and the charts read it |
 | OneTrack part numbers, descriptions, units | `lib/onetrack/data/menu.ts` (raw, from `../Onetrack/data/onetrack-catalog.json`) → `lib/onetrack/catalog.ts` | `catalog.test.ts`: 95 part numbers, all well-formed and unique |
 | OneTrack categories and filter chips | `lib/onetrack/categories.ts` | `catalog.test.ts` asserts every chip key exists on every item |
@@ -154,7 +163,12 @@ progress; anything they genuinely cannot measure gets marked
   of the part numbers and quantities they produced. Photos are **not** in it:
   they stay in the device's IndexedDB (`lib/onetrack/photos.ts`)
 
-The Belt Elongation Check has no collection: it computes and discards.
+The Belt Elongation Check and the Belt Configurator have no collection: they
+compute and discard.
+
+- `accessRequests/{email}__{toolId}` — a request for a greyed-out tool
+  (`lib/accessRequests.ts`); the requester writes their own, the admin reads
+  and clears them
 
 Ownership is per-uid and enforced in `firestore.rules`; no user can read
 another's records. [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) has the
