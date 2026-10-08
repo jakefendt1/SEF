@@ -265,7 +265,7 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
         <div className="container flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-foreground leading-tight">ThermoDrive Belt Configurator</h2>
-            <p className="text-sm text-muted-foreground truncate">Based on Patrick's Belt Configurator (v0.65). Nothing is saved.</p>
+            <p className="text-sm text-muted-foreground truncate">Developed by Patrick Madore. Nothing is saved.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-lg border border-border overflow-hidden" role="group" aria-label="Units">

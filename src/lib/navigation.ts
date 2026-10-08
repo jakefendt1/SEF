@@ -31,6 +31,8 @@ export interface ToolDef {
   /** Short name, used in the back button where space is tight. */
   shortTitle: string
   description: string
+  /** Who built it, shown on the dashboard card. */
+  credit: string
   href: string
   icon: LucideIcon
 }
@@ -41,6 +43,7 @@ export const TOOLS: ToolDef[] = [
     title: 'Spiral Eval',
     shortTitle: 'Spiral Eval',
     description: 'Fill out a field evaluation for an Intralox spiral conveyor.',
+    credit: 'Developed by Jake Fendt',
     href: ROUTES.spiralEvalList,
     icon: ClipboardList,
   },
@@ -49,6 +52,7 @@ export const TOOLS: ToolDef[] = [
     title: 'AIM Glide ROI Calculator',
     shortTitle: 'ROI Calculator',
     description: 'Compare cost of ownership and ROI for AIM Glide vs. a traditional slat switch.',
+    credit: 'Developed by Jake Fendt',
     href: ROUTES.aimGlide,
     icon: Calculator,
   },
@@ -58,6 +62,7 @@ export const TOOLS: ToolDef[] = [
     shortTitle: 'Elongation',
     description:
       "Measure belt stretch with a tape measure when you haven't got the elongation ruler.",
+    credit: 'Developed by Jake Fendt',
     href: ROUTES.beltElongation,
     icon: Ruler,
   },
@@ -67,6 +72,7 @@ export const TOOLS: ToolDef[] = [
     shortTitle: 'Bulk Density',
     description:
       'How much a flighted ThermoDrive incline carries, and what sidewalls or guards add, for a bulk product.',
+    credit: 'Developed by Jake Fendt',
     href: ROUTES.tdBulkDensity,
     icon: Layers,
   },
@@ -75,7 +81,8 @@ export const TOOLS: ToolDef[] = [
     title: 'ThermoDrive Belt Configurator',
     shortTitle: 'Belt Configurator',
     description:
-      "Lay out a ThermoDrive belt (flights, notches, sidewalls, V-guides, splice, repair and sections) and check it against fabrication rules. From Patrick's configurator.",
+      "Lay out a ThermoDrive belt (flights, notches, sidewalls, V-guides, splice, repair and sections) and check it against fabrication rules.",
+    credit: 'Developed by Patrick Madore',
     href: ROUTES.tdConfigurator,
     icon: Rows3,
   },
@@ -84,6 +91,7 @@ export const TOOLS: ToolDef[] = [
     title: 'OneTrack BOM Builder',
     shortTitle: 'OneTrack BOM',
     description: 'Pick OneTrack parts on the floor and send CS a part-numbered BOM to quote.',
+    credit: 'Developed by Jake Fendt, Jeremy Shall and Adam Richardson',
     href: ROUTES.onetrack,
     icon: Package,
   },

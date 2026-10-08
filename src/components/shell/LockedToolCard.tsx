@@ -9,13 +9,14 @@ interface LockedToolCardProps {
   title: string
   description: string
   icon: LucideIcon
+  credit?: string
   /** True once a request for this tool is waiting. */
   requested: boolean
   onRequest: () => void
   onCancel: () => void
 }
 
-export function LockedToolCard({ title, description, icon: Icon, requested, onRequest, onCancel }: LockedToolCardProps) {
+export function LockedToolCard({ title, description, icon: Icon, credit, requested, onRequest, onCancel }: LockedToolCardProps) {
   return (
     <Card className="h-full bg-gray-50 border-dashed">
       <CardHeader>
@@ -29,6 +30,7 @@ export function LockedToolCard({ title, description, icon: Icon, requested, onRe
       </CardHeader>
       <CardContent>
         <p className="text-base text-gray-500">{description}</p>
+        {credit && <p className="mt-2 text-sm text-gray-400 italic">{credit}</p>}
         {requested ? (
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <p className="text-base font-semibold text-gray-700 flex items-center gap-1.5">

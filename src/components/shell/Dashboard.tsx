@@ -102,6 +102,7 @@ export function Dashboard() {
                 title={tool.title}
                 description={tool.description}
                 icon={tool.icon}
+                credit={tool.credit}
                 href={tool.href}
                 beta={isBeta(tool.id)}
               />
@@ -111,6 +112,7 @@ export function Dashboard() {
                 title={tool.title}
                 description={tool.description}
                 icon={tool.icon}
+                credit={tool.credit}
                 requested={requested.has(tool.id)}
                 onRequest={() => setAsking({ id: tool.id, title: tool.title })}
                 onCancel={() => void cancel(tool.id)}
