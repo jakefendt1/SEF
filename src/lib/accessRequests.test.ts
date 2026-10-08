@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { openRequests, requestDocId, requestableTools, type AccessRequest } from './accessRequests'
+import { NOTE_MAX, buildRequest, openRequests, requestDocId, requestableTools, type AccessRequest } from './accessRequests'
 
 const req = (email: string, toolId: string, at: number): AccessRequest => ({ email, name: '', toolId, note: '', requestedAt: at })
 
@@ -25,5 +25,23 @@ describe('access requests', () => {
       ['b@intralox.com', 'aim-glide'],
       ['a@intralox.com', 'spiral-eval'],
     ])
+  })
+})
+
+describe('access request records', () => {
+  it('R4: trims and caps what the rules cap, and stores the email lowercase', () => {
+    const r = buildRequest('Jeremy.Shall@Intralox.com', '  Jeremy Shall ', 'onetrack', `  ${'x'.repeat(600)} `, 5)
+    expect(r.email).toBe('jeremy.shall@intralox.com')
+    expect(r.name).toBe('Jeremy Shall')
+    expect(r.note.length).toBe(NOTE_MAX)
+    expect(r.requestedAt).toBe(5)
+  })
+
+  it('R5: firestore.rules has the matching collection, id format and limits', async () => {
+    const rules = (await import('../../firestore.rules?raw')).default as string
+    expect(rules).toContain('match /accessRequests/{id}')
+    expect(rules).toContain("id == myEmail() + '__' + d.toolId")
+    expect(rules).toContain(`d.note.size() <= ${NOTE_MAX}`)
+    expect(requestDocId('a@intralox.com', 'onetrack')).toBe('a@intralox.com__onetrack')
   })
 })

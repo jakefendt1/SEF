@@ -59,6 +59,29 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Access requests: someone taps a greyed-out tile and asks for that tool;
+    // the admin sees it on Manage access. One doc per person per tool, id
+    // "{email}__{toolId}" (src/lib/accessRequests.ts), so asking twice
+    // overwrites instead of piling up. The requester can only write their own
+    // and only these fields; the admin reads all and deletes on approve/decline.
+    function validRequest(id) {
+      let d = request.resource.data;
+      return isVerified()
+        && d.keys().hasOnly(['email', 'name', 'toolId', 'note', 'requestedAt'])
+        && d.email == myEmail()
+        && d.toolId is string && d.toolId.size() > 0 && d.toolId.size() <= 40
+        && id == myEmail() + '__' + d.toolId
+        && d.name is string && d.name.size() <= 120
+        && d.note is string && d.note.size() <= 500
+        && d.requestedAt is number;
+    }
+
+    match /accessRequests/{id} {
+      allow read: if isAdmin() || (isVerified() && resource.data.email == myEmail());
+      allow create, update: if validRequest(id);
+      allow delete: if isAdmin() || (isVerified() && resource.data.email == myEmail());
+    }
+
     match /users/{uid} {
       // Profiles are written at sign-up, before the email is verified.
       allow read, write: if isOwner(uid);

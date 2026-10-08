@@ -4,11 +4,13 @@
 // just as fast. A new tool in lib/navigation.ts TOOLS gets a switch here
 // automatically, off for everyone.
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Search, UserPlus } from 'lucide-react'
+import { Check, Inbox, Search, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { adminRows, isAdmin, isDefaultTool, toggleTool, ALL_TOOL_IDS, type AccessGrant, type AdminRow } from '@/lib/access'
+import { openRequests, type AccessRequest } from '@/lib/accessRequests'
 import { isAllowedSignupEmail } from '@/lib/allowedEmails'
+import { deleteRequest, subscribeAllRequests } from '@/lib/firestoreAccessRequests'
 import { putAccess, subscribeAllAccess, subscribeAllProfiles, type ProfileRow } from '@/lib/firestoreAccess'
 import { TOOLS } from '@/lib/navigation'
 import { raceWrite, WRITE_MESSAGES } from '@/lib/writeOutcome'
@@ -40,10 +42,15 @@ function ToolSwitch({ label, on, disabled, onChange }: { label: string; on: bool
   )
 }
 
+function toolTitle(id: string): string {
+  return TOOLS.find((t) => t.id === id)?.title ?? id
+}
+
 export function AccessAdmin() {
   const me = useAuthStore((s) => s.user?.email ?? null)
   const [profiles, setProfiles] = useState<ProfileRow[]>([])
   const [grants, setGrants] = useState<AccessGrant[]>([])
+  const [requests, setRequests] = useState<AccessRequest[]>([])
   const [loaded, setLoaded] = useState({ profiles: false, grants: false })
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -62,14 +69,17 @@ export function AccessAdmin() {
       setGrants(g)
       setLoaded((l) => ({ ...l, grants: true }))
     }, fail)
+    const c = subscribeAllRequests(setRequests, fail)
     return () => {
       a()
       b()
+      c()
     }
   }, [admin])
 
   const rows = useMemo(() => adminRows(profiles, grants, search), [profiles, grants, search])
   const total = useMemo(() => adminRows(profiles, grants).length, [profiles, grants])
+  const waiting = useMemo(() => openRequests(requests, grants), [requests, grants])
 
   if (!admin) return <NoAccess what="Manage access" />
 
@@ -85,6 +95,25 @@ export function AccessAdmin() {
         if (o.kind === 'failed') toast.error(`${WRITE_MESSAGES.lateFailed} ${o.message}`)
       })
     }
+  }
+
+  /** Approve: turn the tool on, then clear the request. Decline: just clear it. */
+  const answer = async (req: AccessRequest, approve: boolean) => {
+    const key = `${req.email}__${req.toolId}`
+    setSaving(key)
+    if (approve && me) {
+      const current = grants.find((g) => g.email === req.email)?.tools ?? []
+      const { outcome } = await raceWrite(putAccess(req.email, toggleTool(current, req.toolId, true), me))
+      if (outcome.kind === 'failed') {
+        setSaving(null)
+        toast.error(`Didn't approve. ${outcome.message}`)
+        return
+      }
+    }
+    const { outcome } = await raceWrite(deleteRequest(req.email, req.toolId))
+    setSaving(null)
+    if (outcome.kind === 'failed') toast.error(`Couldn't clear the request. ${outcome.message}`)
+    else toast.success(approve ? `${req.name || req.email} can use ${toolTitle(req.toolId)} now.` : 'Request declined.')
   }
 
   const addEmail = async () => {
@@ -106,7 +135,8 @@ export function AccessAdmin() {
       <div>
         <h2 className="text-2xl font-semibold text-gray-900">Manage access</h2>
         <p className="text-base text-gray-600">
-          Everyone who signs up starts with no tools. Turn on what each person needs; it takes effect right away.
+          Everyone who signs up starts with the everyone tools and sees the rest greyed out, with a button to request
+          them. Requests land at the top of this page. Switches take effect right away.
         </p>
       </div>
 
@@ -142,6 +172,45 @@ export function AccessAdmin() {
           </Button>
         </form>
       </div>
+
+      {waiting.length > 0 && (
+        <section aria-labelledby="requests-heading" className="rounded-xl border-2 border-brand/40 bg-blue-50 p-4 space-y-3">
+          <h3 id="requests-heading" className="text-lg font-semibold text-brand flex items-center gap-2">
+            <Inbox className="size-5" aria-hidden="true" /> Requests · {waiting.length} waiting
+          </h3>
+          <ul className="space-y-2">
+            {waiting.map((req) => {
+              const key = `${req.email}__${req.toolId}`
+              return (
+                <li key={key} className="rounded-lg border border-border bg-white p-3 flex flex-wrap items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold text-gray-900">
+                      {req.name || req.email} wants <span className="text-brand">{toolTitle(req.toolId)}</span>
+                    </p>
+                    <p className="text-sm text-gray-600 truncate">
+                      {req.name ? `${req.email} · ` : ''}
+                      {new Date(req.requestedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                    {req.note && <p className="text-base text-gray-800 mt-1">“{req.note}”</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className="min-h-[48px] text-base bg-brand hover:bg-brand-hover"
+                      disabled={saving === key}
+                      onClick={() => void answer(req, true)}
+                    >
+                      <Check className="size-5" /> Approve
+                    </Button>
+                    <Button variant="outline" className="min-h-[48px] text-base" disabled={saving === key} onClick={() => void answer(req, false)}>
+                      <X className="size-5" /> Decline
+                    </Button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
 
       {error && <p className="text-base text-warning-orange">Couldn't load everyone: {error}</p>}
       {!loaded.profiles || !loaded.grants ? (
