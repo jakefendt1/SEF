@@ -3,9 +3,10 @@
 // (v0.65) over the shared engine in lib/thermodrive, which the Bulk Density
 // calculator uses too. Saves nothing: the belt travels by URL and leaves as a
 // build sheet.
-import { useCallback, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
-import { Check, ChevronLeft, ChevronRight, Layers, ListChecks, RotateCcw } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, FileText, Layers, ListChecks, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -22,8 +23,23 @@ import { WarningsPanel } from '../td-bulk-density/WarningsPanel'
 import { EdgesPanel, FlightsPanel, ProductPanel, SizePanel, type PanelProps } from './BeltPanels'
 import { RepairPanel, RepairView, SectionsPanel, SectionsView } from './RepairSections'
 import { CrossView, SeamView, SummaryTable, TopView } from './views'
+import type { Belt3DLayers } from './Belt3D'
+import { BuildSheetDialog, type SheetMeta } from './BuildSheetDialog'
+import { buildSheet, buildSheetHtml, buildSheetText } from '@/lib/thermodrive/buildSheet'
+import { saveBlob } from '../onetrack/outputs'
+import { useAuthStore } from '@/store/authStore'
+import { PDF_EXPORT_MESSAGES } from '@/lib/statusLabels'
+
+const Belt3D = lazy(() => import('./Belt3D'))
 
 const UNIT_KEY = 'tdConfiguratorUnits'
+
+const LAYER_LABELS: { id: keyof Belt3DLayers; label: string }[] = [
+  { id: 'flights', label: 'Flights' },
+  { id: 'sidewalls', label: 'Sidewalls' },
+  { id: 'vguides', label: 'V-guides' },
+  { id: 'drive', label: 'Drive lugs' },
+]
 
 function loadUnits(): UnitSystem {
   try {
@@ -62,10 +78,18 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
   const [stepIndex, setStepIndex] = useState(0)
   const [allPanels, setAllPanels] = useState(false)
   const [tab, setTab] = useState<'belt' | 'repair' | 'sections'>('belt')
-  const [view, setView] = useState('top')
+  const [view, setView] = useState('3d')
   const [repair, setRepair] = useState<RepairState>(() => defaultRepair(init?.belt ?? freshBelt()))
   const [sectionMode, setSectionMode] = useState<SectionMode>(defaultSectionMode)
   const [note, setNote] = useState(init?.note ?? null)
+  const [layers, setLayers] = useState<Belt3DLayers>({ flights: true, sidewalls: true, vguides: true, drive: true })
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetMeta, setSheetMeta] = useState<SheetMeta>({ customer: '', reference: '', notes: '' })
+  const [exporting, setExporting] = useState(false)
+  const profile = useAuthStore((s) => s.profile)
+  const email = useAuthStore((s) => s.user?.email ?? '')
+  const canvas3d = useRef<HTMLCanvasElement | null>(null)
+  const setCanvas3d = useCallback((c: HTMLCanvasElement | null) => (canvas3d.current = c), [])
   const [, navigate] = useLocation()
   const { tools } = useMyTools()
 
@@ -103,6 +127,50 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
     if (sendBlocker) return
     const { handoff } = handoffFromBelt(belt, init?.carry)
     navigate(`${ROUTES.tdBulkDensity}?${HANDOFF_PARAM}=${encodeHandoff(handoff)}`)
+  }
+
+  const sheetNow = () =>
+    buildSheet(belt, repair, sectionMode, { ...sheetMeta, preparedBy: profile?.displayName || email, date: new Date().toISOString().slice(0, 10) }, system)
+
+  const downloadPdf = async () => {
+    setExporting(true)
+    try {
+      const { exportBuildSheetPdf } = await import('./exportBuildSheet')
+      const r = await exportBuildSheetPdf({ sheet: sheetNow(), belt, system, warnIds, canvas3d: canvas3d.current })
+      saveBlob(r.blob, r.fileName)
+      if (!r.logoRendered) toast.warning(PDF_EXPORT_MESSAGES.missingLogo)
+      else toast.success(PDF_EXPORT_MESSAGES.ok)
+      setSheetOpen(false)
+    } catch (err) {
+      console.error('[build sheet]', err)
+      toast.error(PDF_EXPORT_MESSAGES.failed)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // HTML and plain text in one clipboard write, as the OneTrack BOM does.
+  const copySheet = async (): Promise<boolean> => {
+    const sheet = sheetNow()
+    const plain = buildSheetText(sheet)
+    const html = buildSheetHtml(sheet)
+    try {
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([plain], { type: 'text/plain' }) }),
+        ])
+        return true
+      }
+      await navigator.clipboard.writeText(plain)
+      return true
+    } catch {
+      try {
+        await navigator.clipboard.writeText(plain)
+        return true
+      } catch {
+        return false
+      }
+    }
   }
 
   const step = STEPS[stepIndex]
@@ -219,6 +287,10 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
                 <span className="hidden sm:inline">Send to Bulk Density</span>
               </Button>
             )}
+            <Button variant="outline" className="min-h-[44px]" disabled={!(belt.widthMm > 0)} onClick={() => setSheetOpen(true)}>
+              <FileText className="size-5" />
+              <span className="hidden sm:inline">Build sheet</span>
+            </Button>
             <Button variant="outline" size="icon" className="size-11" onClick={reset} aria-label="Start a new belt">
               <RotateCcw className="size-5" />
             </Button>
@@ -249,12 +321,34 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
               <CardContent className="pt-6 space-y-4">
                 {tab === 'belt' && (
                   <Tabs value={view} onValueChange={setView}>
-                    <TabsList className="w-full h-auto grid grid-cols-2 sm:grid-cols-4 gap-1">
+                    <TabsList className="w-full h-auto grid grid-cols-3 sm:grid-cols-5 gap-1">
+                      <TabsTrigger value="3d" className="text-base min-h-[44px]">3D</TabsTrigger>
                       <TabsTrigger value="top" className="text-base min-h-[44px]">Top</TabsTrigger>
                       <TabsTrigger value="splice" className="text-base min-h-[44px]">Splice</TabsTrigger>
                       <TabsTrigger value="cross" className="text-base min-h-[44px]">Cross-section</TabsTrigger>
                       <TabsTrigger value="summary" className="text-base min-h-[44px]">Summary</TabsTrigger>
                     </TabsList>
+                    <TabsContent value="3d" className="pt-3 space-y-2">
+                      <Suspense fallback={<div className="h-[min(60vh,26rem)] grid place-items-center text-muted-foreground">Loading 3D view…</div>}>
+                        <Belt3D belt={belt} warnIds={warnIds} layers={layers} onCanvas={setCanvas3d} />
+                      </Suspense>
+                      <p className="text-sm text-muted-foreground">
+                        Across the splice: the end of one loop, the splice, the start of the next. Drag to turn it, pinch to zoom.
+                      </p>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label="Show in 3D">
+                        {LAYER_LABELS.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            aria-pressed={layers[l.id]}
+                            onClick={() => setLayers((x) => ({ ...x, [l.id]: !x[l.id] }))}
+                            className={cn('min-h-[44px] rounded-lg border px-3 text-sm font-semibold', layers[l.id] ? 'border-brand bg-blue-50 text-brand' : 'border-border bg-white text-muted-foreground')}
+                          >
+                            {l.label}
+                          </button>
+                        ))}
+                      </div>
+                    </TabsContent>
                     <TabsContent value="top" className="pt-3">
                       <TopView belt={belt} system={system} warnIds={warnIds} id="td-view-top" />
                     </TabsContent>
@@ -301,6 +395,16 @@ export function TdConfiguratorHome({ init }: { init?: ConfiguratorInit }) {
           </div>
         </div>
       </div>
+      <BuildSheetDialog
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        meta={sheetMeta}
+        onMetaChange={setSheetMeta}
+        errors={errors}
+        busy={exporting}
+        onPdf={() => void downloadPdf()}
+        onCopy={copySheet}
+      />
     </div>
   )
 }

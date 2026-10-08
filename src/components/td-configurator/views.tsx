@@ -76,7 +76,7 @@ export function TopView({ belt, system, warnIds, id }: { belt: TdBelt; system: U
   const drives = driveBands(b)
   const v0 = b.vars[0]
   return (
-    <svg id={id} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Top view of the belt from the splice">
+    <svg id={id} fontFamily="Arial, Helvetica, sans-serif" viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Top view of the belt from the splice">
       <rect width={W} height={H} fill="#fff" />
       <Travel x={mx} y={28} />
       <rect x={mx} y={my} width={bw} height={bh} rx={6} fill={beltFill(b)} stroke={beltEdge(b)} strokeWidth={2} />
@@ -140,7 +140,7 @@ export function SeamView({ belt, system, id }: { belt: TdBelt; system: UnitSyste
   const H = 20 + b.vars.length * band
   const p = pitchMm(b)
   return (
-    <svg id={id} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Flight spacing across the splice">
+    <svg id={id} fontFamily="Arial, Helvetica, sans-serif" viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Flight spacing across the splice">
       <rect width={W} height={H} fill="#fff" />
       {b.vars.map((v, i) => {
         const info = finalSpacingInfo(b, v)
@@ -225,7 +225,7 @@ export function CrossView({ belt, system, warnIds, id }: { belt: TdBelt; system:
   }
   const H = bTop + bTh + 40 + (dims.length + 1) * 30
   return (
-    <svg id={id} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Cross-section of the belt">
+    <svg id={id} fontFamily="Arial, Helvetica, sans-serif" viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Cross-section of the belt">
       <rect width={W} height={H} fill="#fff" />
       <rect x={mx} y={bTop} width={bw} height={bTh} fill={beltFill(b)} stroke={beltEdge(b)} strokeWidth={2} />
       {b.flightsOn &&

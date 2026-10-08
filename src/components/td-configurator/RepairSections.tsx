@@ -95,7 +95,7 @@ export function RepairView({ belt, repair, system, id }: { belt: TdBelt; repair:
   )
   return (
     <div className="space-y-2">
-      <svg id={id} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Repair section with ThermoLace">
+      <svg id={id} fontFamily="Arial, Helvetica, sans-serif" viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Repair section with ThermoLace">
         <rect width={W} height={H} fill="#fff" />
         <rect x={mx} y={my} width={bw} height={bh} rx={6} fill={beltFill(b)} stroke={beltEdge(b)} strokeWidth={2} />
         {Array.from({ length: lace.rows + 1 }, (_, r) => (
@@ -242,7 +242,7 @@ export function SectionsView({ belt, mode, system, id }: { belt: TdBelt; mode: S
   return (
     <div className="space-y-3">
       {rows.length > 0 && (
-        <svg id={id} viewBox={`0 0 ${W} 110`} className="w-full h-auto" role="img" aria-label="Section layout">
+        <svg id={id} fontFamily="Arial, Helvetica, sans-serif" viewBox={`0 0 ${W} 110`} className="w-full h-auto" role="img" aria-label="Section layout">
           <rect width={W} height={110} fill="#fff" />
           {rows.map((r, i) => {
             const x = mx + (starts[i] / total) * bw
