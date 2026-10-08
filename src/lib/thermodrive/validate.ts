@@ -173,7 +173,7 @@ export function validateBelt(belt: TdBelt, system: UnitSystem = 'imperial'): War
         'section-max',
         'warning',
         `The belt is longer than one section can be: ${msi.ft} ft / ${msi.m} m max with features ${msi.label}.`,
-        'Split it into sections on the Sectioning tab.',
+        'Split it into sections on the Sections tab.',
       ),
     )
   }

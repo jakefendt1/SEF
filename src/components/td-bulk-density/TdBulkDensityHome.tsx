@@ -8,7 +8,7 @@
 // All of the arithmetic lives in lib/tdBulkDensity and runs in a worker.
 // This file is inputs, layout, persistence wiring and honest presentation.
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
-import { useLocation, useRoute } from 'wouter'
+import { useLocation, useRoute, useSearch } from 'wouter'
 import { toast } from 'sonner'
 import {
   Check,
@@ -21,6 +21,7 @@ import {
   Layers,
   Pin,
   RotateCcw,
+  Rows3,
   Save,
   TriangleAlert,
 } from 'lucide-react'
@@ -56,6 +57,8 @@ import {
 } from '@/lib/tdBulkDensityRecord'
 import type { PdfVersion } from '@/lib/tdBulkDensityPdf'
 import { WRITE_MESSAGES } from '@/lib/writeOutcome'
+import { HANDOFF_PARAM, applyHandoffToForm, decodeHandoff, encodeHandoff, handoffFromForm, type HandoffBelt } from '@/lib/thermodrive/handoff'
+import { useMyTools } from '@/store/useMyTools'
 import { cn } from '@/lib/utils'
 import { useTdBulkDensityStore } from '@/store/tdBulkDensityStore'
 import { CompareStrip } from './CompareStrip'
@@ -110,7 +113,11 @@ export function TdBulkDensityHome() {
   const saveRun = useTdBulkDensityStore((s) => s.save)
   const removeRun = useTdBulkDensityStore((s) => s.remove)
 
-  const [form, setForm] = useState<TdForm>(initialForm)
+  const search = useSearch()
+  // A belt handed over from the Belt Configurator (?belt=...), read once.
+  const [handoff] = useState<HandoffBelt | null>(() => decodeHandoff(new URLSearchParams(search).get(HANDOFF_PARAM)))
+  const [form, setForm] = useState<TdForm>(() => (handoff ? reconcile(applyHandoffToForm(initialForm(), handoff)) : initialForm()))
+  const { tools } = useMyTools()
   const [stepIndex, setStepIndex] = useState(0)
   const [cutX, setCutX] = useState(0.4)
   const [cutZ, setCutZ] = useState(0.5)
@@ -122,7 +129,11 @@ export function TdBulkDensityHome() {
   const [meta, setMeta] = useState<RunMeta>(EMPTY_META)
   const [loadedRun, setLoadedRun] = useState<StoredTdRun | null>(null)
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
-  const [reloadNote, setReloadNote] = useState<string | null>(null)
+  const [reloadNote, setReloadNote] = useState<string | null>(() => {
+    if (!handoff) return null
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', window.location.pathname)
+    return 'Opened the belt from the Belt Configurator. Add the incline and the product to see what it carries.'
+  })
   const [saveOpen, setSaveOpen] = useState(false)
   const [runsOpen, setRunsOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -300,6 +311,12 @@ export function TdBulkDensityHome() {
     }
   }
 
+  const beltForConfigurator = handoffFromForm(form, handoff ?? undefined)
+  const openInConfigurator = () => {
+    if (!beltForConfigurator) return
+    navigate(`${ROUTES.tdConfigurator}?${HANDOFF_PARAM}=${encodeHandoff(beltForConfigurator)}`)
+  }
+
   const handlePick = (p: SweepPick) => {
     const sys = form.system
     if (p.sweep === 'sidewall') set({ containment: 'sidewalls', sidewallHeight: String(p.x) })
@@ -322,6 +339,19 @@ export function TdBulkDensityHome() {
             <p className={cn('text-sm truncate', dirty ? 'text-warning-orange font-medium' : 'text-muted-foreground')}>{subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {tools.includes('td-configurator') && (
+              <Button
+                variant="outline"
+                className="min-h-[44px]"
+                disabled={!beltForConfigurator}
+                onClick={openInConfigurator}
+                aria-label="Visualize this belt in the Belt Configurator"
+                title={beltForConfigurator ? undefined : 'Enter the belt width, flight height and spacing first'}
+              >
+                <Rows3 className="size-5" />
+                <span className="hidden sm:inline">Visualize belt</span>
+              </Button>
+            )}
             <Button variant="outline" className="min-h-[44px]" onClick={() => setRunsOpen(true)}>
               <FolderOpen className="size-5" />
               <span className="hidden sm:inline">Saved runs</span>

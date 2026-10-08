@@ -3,7 +3,7 @@
 //
 // Launching a tool = deleting its id here and pushing.
 
-export const BETA_TOOL_IDS: readonly string[] = ['onetrack']
+export const BETA_TOOL_IDS: readonly string[] = ['onetrack', 'td-configurator']
 
 export function isBeta(toolId: string): boolean {
   return BETA_TOOL_IDS.includes(toolId)

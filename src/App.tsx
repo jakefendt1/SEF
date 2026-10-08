@@ -11,6 +11,7 @@ import { AimGlideHome } from './components/aim-glide/AimGlideHome'
 import { BeltElongationHome } from './components/belt-elongation/BeltElongationHome'
 import { TdBulkDensityHome } from './components/td-bulk-density/TdBulkDensityHome'
 import { OnetrackHome } from './components/onetrack/OnetrackHome'
+import { TdConfiguratorRoute } from './components/td-configurator/TdConfiguratorRoute'
 import { ToolGate } from './components/shell/ToolGate'
 import { AccessAdmin } from './components/admin/AccessAdmin'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -43,6 +44,9 @@ export default function App() {
               </Route>
               <Route path={ROUTES.tdBulkDensityRun}>
                 <ToolGate toolId="td-bulk-density"><TdBulkDensityHome /></ToolGate>
+              </Route>
+              <Route path={ROUTES.tdConfigurator}>
+                <ToolGate toolId="td-configurator"><TdConfiguratorRoute /></ToolGate>
               </Route>
               <Route path={ROUTES.onetrack}>
                 <ToolGate toolId="onetrack"><OnetrackHome /></ToolGate>

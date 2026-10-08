@@ -3,7 +3,7 @@
 // read from here so a route can't be renamed in one place and go stale in
 // another.
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardList, Calculator, Layers, Package, Ruler } from 'lucide-react'
+import { ClipboardList, Calculator, Layers, Package, Rows3, Ruler } from 'lucide-react'
 import { getSectionBySlug } from '../schema/sectionMap'
 
 export const ROUTES = {
@@ -16,6 +16,7 @@ export const ROUTES = {
   tdBulkDensity: '/td-bulk-density',
   /** A saved run, reopened. */
   tdBulkDensityRun: '/td-bulk-density/:id',
+  tdConfigurator: '/td-configurator',
   onetrack: '/onetrack',
   /** A saved BOM, reopened. */
   onetrackBom: '/onetrack/:id',
@@ -68,6 +69,15 @@ export const TOOLS: ToolDef[] = [
       'How much a flighted ThermoDrive incline carries, and what sidewalls or guards add, for a bulk product.',
     href: ROUTES.tdBulkDensity,
     icon: Layers,
+  },
+  {
+    id: 'td-configurator',
+    title: 'ThermoDrive Belt Configurator',
+    shortTitle: 'Belt Configurator',
+    description:
+      "Lay out a ThermoDrive belt (flights, notches, sidewalls, V-guides, splice, repair and sections) and check it against fabrication rules. From Patrick's configurator.",
+    href: ROUTES.tdConfigurator,
+    icon: Rows3,
   },
   {
     id: 'onetrack',
@@ -157,6 +167,10 @@ export function resolveNav(path: string): NavContext {
 
   if (p.startsWith(`${ROUTES.tdBulkDensity}/`)) {
     return { title: 'Saved run', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
+  }
+
+  if (p === ROUTES.tdConfigurator) {
+    return { title: 'ThermoDrive Belt Configurator', backHref: ROUTES.dashboard, backLabel: DASHBOARD_LABEL }
   }
 
   if (p === ROUTES.onetrack) {
