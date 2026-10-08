@@ -4,20 +4,22 @@
 // origin, u along the belt uphill, v normal to the belt. The back face is the
 // face shifted by -thickness along u -- acceptable for flights 0.28 in thick
 // or less.
-import { ANGLED_FLIGHT_DEG, SCOOP_LIPS } from './data/flights'
+import { ANGLED_FLIGHT_DEG, scoopLip } from './data/flights'
 import type { FlightProfile, FlightType, Point } from './types'
 
 const DEG = Math.PI / 180
 
 /**
  * Build a flight profile. `override` is a CAD-verified face (from the dev-only
- * import) that replaces the parametric one without a code change.
+ * import) that replaces the parametric one without a code change. `calcLab`
+ * draws scoops the way CalcLab does instead of from the bulletin.
  */
 export function buildProfile(
   type: FlightType,
   heightIn: number,
   thicknessIn: number,
   override?: Point[] | null,
+  calcLab = false,
 ): FlightProfile {
   let face: Point[]
 
@@ -39,7 +41,7 @@ export function buildProfile(
   } else {
     // Body normal to the belt, then a straight lip bent toward the product.
     // H is the tip's normal height, not the body length (T18 depends on it).
-    const { phiDeg, lipLengthIn } = SCOOP_LIPS[type]
+    const { phiDeg, lipLengthIn } = scoopLip(type, thicknessIn, calcLab)
     const lambda = (phiDeg - 90) * DEG
     const bodyIn = H - lipLengthIn * Math.sin(lambda)
     face = [
@@ -63,8 +65,8 @@ export function buildProfile(
 }
 
 /** Scoop body length for a nominal height -- used in the UI's dimension callouts. */
-export function scoopBodyIn(type: 'scoop' | 'shortTopScoop', heightIn: number): number {
-  const { phiDeg, lipLengthIn } = SCOOP_LIPS[type]
+export function scoopBodyIn(type: 'scoop' | 'shortTopScoop', heightIn: number, thicknessIn: number): number {
+  const { phiDeg, lipLengthIn } = scoopLip(type, thicknessIn)
   return heightIn - lipLengthIn * Math.sin((phiDeg - 90) * DEG)
 }
 

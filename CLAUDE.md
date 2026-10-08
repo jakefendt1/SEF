@@ -117,8 +117,15 @@ the flight; starting there under-counted volume by up to ~44% (fixed in engine
 1.1.0, caught by an external audit; the 90° tests couldn't see it). The
 75°/scoop plateau tests in `engine.test.ts` guard it.
 
+**Scoop flights come from the scoop bulletin, except in CalcLab mode.**
+`SCOOP_LIPS` in `data/flights.ts` is Patrick's *Thermodrive Scoop Dimensions
+6.pdf* (100°/120° lips, tip reach from the back face by thickness, 2.95 in
+height). CalcLab draws its own scoop (105°/2.0 in, 125°/1.5 in:
+`CALCLAB_SCOOP_LIPS`), and CalcLab mode and the waterfall's first step use it so
+they still reproduce CalcLab (T18, Jacksons). Engine 1.2.0.
+
 **The CalcLab waterfall** (`waterfall.ts`): CalcLab (thin flight, walls, static
-repose) → real thickness → dynamic derate → flight-end spill. Steps 1–3 are 2D
+repose) → real thickness (and, for scoops, the bulletin lip) → dynamic derate → flight-end spill. Steps 1–3 are 2D
 areas × carry width; the last is the 3D result. Its first step is calibrated
 against the Jacksons/Mez CalcLab run.
 

@@ -5,6 +5,7 @@
 // T8 581.5 open / 906.5 walls, T9 0.0.
 import { describe, expect, it } from 'vitest'
 import { computeTdBulkDensity } from './compute'
+import { FLIGHT_TYPES } from './data/flights'
 import { SIDEWALL_FOOTPRINT_IN } from './data/sidewalls'
 import { makeInputs } from './defaults'
 import { computePocket2D } from './pocket2d'
@@ -78,8 +79,66 @@ describe('2D pocket (plan §3.2)', () => {
     expect(computePocket2D(bare, 8, 52, 15).geometricCase).toBe('clears')
     expect(computePocket2D(bare, 8, 52, 20).geometricCase).toBe('meets')
   })
-  it('T19: 5 in short-top scoop, α=52, γ=0 → 15.38 in²', () => {
-    expect(area(52, 0, buildProfile('shortTopScoop', 5, 0))).toBeCloseTo(15.38, 2)
+  it('T19: 5 in short-top scoop, α=52, γ=0 → 15.38 in² (CalcLab-mode lip, as in the plan)', () => {
+    expect(area(52, 0, buildProfile('shortTopScoop', 5, 0, null, true))).toBeCloseTo(15.38, 2)
+  })
+})
+
+// Source: Special Product Offering Bulletin, ThermoDrive scoop dimensions
+// (refs/From Patrick Colab/Thermodrive Scoop Dimensions 6.pdf). Lip 100°
+// standard / 120° short-top; tip reach from the back face 2.00 in standard,
+// 1.46 in (7 mm) / 1.34 in (4 mm) short-top; heights 2.95 (75 mm) to 6 in.
+describe('Scoop flights match the bulletin', () => {
+  const reachFromBack = (type: 'scoop' | 'shortTopScoop', t: number, h: number) => buildProfile(type, h, t).tip[0] + t
+
+  it('the lip tip sits at the bulletin reach from the back face, at every height', () => {
+    for (const h of [2.95, 3, 4, 5, 6]) {
+      expect(reachFromBack('scoop', 0.28, h)).toBeCloseTo(2.0, 9)
+      expect(reachFromBack('scoop', 0.16, h)).toBeCloseTo(2.0, 9)
+      expect(reachFromBack('shortTopScoop', 0.28, h)).toBeCloseTo(1.46, 9)
+      expect(reachFromBack('shortTopScoop', 0.16, h)).toBeCloseTo(1.34, 9)
+      expect(buildProfile('scoop', h, 0.28).tip[1]).toBeCloseTo(h, 9)
+    }
+    // The bulletin's product-face dimensions: 1.72 in (7 mm standard), 1.18 in (short-tops).
+    expect(buildProfile('scoop', 6, 0.28).tip[0]).toBeCloseTo(1.72, 2)
+    expect(buildProfile('shortTopScoop', 6, 0.28).tip[0]).toBeCloseTo(1.18, 2)
+    expect(buildProfile('shortTopScoop', 6, 0.16).tip[0]).toBeCloseTo(1.18, 2)
+  })
+
+  it('the lip is bent at 100° (standard) and 120° (short-top)', () => {
+    const lipDeg = (type: 'scoop' | 'shortTopScoop') => {
+      const [, knee, tip] = buildProfile(type, 5, 0.28).face
+      return 90 + (Math.atan2(tip[1] - knee[1], tip[0] - knee[0]) * 180) / Math.PI
+    }
+    expect(lipDeg('scoop')).toBeCloseTo(100, 9)
+    expect(lipDeg('shortTopScoop')).toBeCloseTo(120, 9)
+  })
+
+  it('2.95 in (75 mm) is offered for both scoops', () => {
+    expect(FLIGHT_TYPES.scoop.heights).toContain(2.95)
+    expect(FLIGHT_TYPES.shortTopScoop.heights).toContain(2.95)
+  })
+
+  it('golden pocket areas, α=52, γ=35, 8 in spacing (bulletin geometry, engine 1.2.0)', () => {
+    const golden: [type: 'scoop' | 'shortTopScoop', t: number, h: number, a: number][] = [
+      ['scoop', 0.16, 2.95, 17.326],
+      ['scoop', 0.16, 4, 25.558],
+      ['scoop', 0.16, 6, 41.238],
+      ['scoop', 0.28, 2.95, 17.01],
+      ['scoop', 0.28, 4, 25.116],
+      ['scoop', 0.28, 6, 40.556],
+      ['shortTopScoop', 0.16, 2.95, 15.946],
+      ['shortTopScoop', 0.16, 4, 24.178],
+      ['shortTopScoop', 0.16, 6, 39.858],
+      ['shortTopScoop', 0.28, 2.95, 15.834],
+      ['shortTopScoop', 0.28, 4, 23.94],
+      ['shortTopScoop', 0.28, 6, 39.38],
+    ]
+    for (const [type, t, h, a] of golden) expect(area(52, 35, buildProfile(type, h, t))).toBeCloseTo(a, 2)
+  })
+
+  it('CalcLab mode keeps the lip CalcLab draws', () => {
+    expect(buildProfile('scoop', 5, 0, null, true).face).not.toEqual(buildProfile('scoop', 5, 0).face)
   })
 })
 

@@ -1,4 +1,4 @@
-import { FLIGHT_TYPES, FLIGHT_TYPE_ORDER, SCOOP_LIPS } from '@/lib/tdBulkDensity/data/flights'
+import { FLIGHT_TYPES, FLIGHT_TYPE_ORDER, SCOOP_LIPS, scoopReachIn } from '@/lib/tdBulkDensity/data/flights'
 import { readField } from '@/lib/tdBulkDensity/form'
 import { scoopBodyIn } from '@/lib/tdBulkDensity/profiles'
 import { availableOptions } from '@/lib/tdBulkDensity/rules'
@@ -12,6 +12,7 @@ export function FlightStep({ form, set }: StepProps) {
   const ft = FLIGHT_TYPES[form.flightType]
   const opts = availableOptions(form)
   const minS = opts.minSpacingIn
+  const thick = Number(form.flightThickness) || 0.16
   const spacing = readField(form, 'flightSpacing')
   const tooClose = spacing !== null && spacing < minS - 0.01
 
@@ -41,7 +42,7 @@ export function FlightStep({ form, set }: StepProps) {
             label: formatLen(h, sys),
             detail:
               form.flightType === 'scoop' || form.flightType === 'shortTopScoop'
-                ? `body ${formatLen(scoopBodyIn(form.flightType, h), sys)}`
+                ? `body ${formatLen(scoopBodyIn(form.flightType, h, thick), sys)}`
                 : undefined,
           }))}
         />
@@ -57,9 +58,8 @@ export function FlightStep({ form, set }: StepProps) {
       )}
       {(form.flightType === 'scoop' || form.flightType === 'shortTopScoop') && (
         <SectionNote>
-          Height is the lip tip's height above the belt. The lip is{' '}
-          {formatLen(SCOOP_LIPS[form.flightType].lipLengthIn, sys)} at{' '}
-          {SCOOP_LIPS[form.flightType].phiDeg}° for every height; only the body changes.
+          Height is the lip tip's height above the belt. The lip is bent at {SCOOP_LIPS[form.flightType].phiDeg}° and
+          reaches {formatLen(scoopReachIn(form.flightType, thick), sys)} from the flight's back face at every height; only the body changes (scoop bulletin).
         </SectionNote>
       )}
 

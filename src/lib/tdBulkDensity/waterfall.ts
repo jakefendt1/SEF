@@ -32,17 +32,18 @@ export function calcLabWaterfall(
   const i = r.inputs
   if (r.status !== 'ok' || !r.width || i.calcLabMode) return null
   const carry = r.width.carryWidthIn
-  const area = (thickness: number, gamma: number) =>
+  const isScoop = i.flightType === 'scoop' || i.flightType === 'shortTopScoop'
+  const area = (thickness: number, gamma: number, calcLab = false) =>
     computePocket2D(
-      buildProfile(i.flightType, i.flightHeightIn, thickness, i.profileOverride),
+      buildProfile(i.flightType, i.flightHeightIn, thickness, i.profileOverride, calcLab),
       i.flightSpacingIn,
       i.inclineDeg,
       gamma,
     ).areaIn2
 
   const volumes: [WaterfallStep['id'], string, number][] = [
-    ['calclab', 'CalcLab (thin flight, walls at both ends, static repose)', area(0, i.reposeDeg) * carry],
-    ['thickness', '+ real flight thickness', area(i.flightThicknessIn, i.reposeDeg) * carry],
+    ['calclab', 'CalcLab (thin flight, walls at both ends, static repose)', area(0, i.reposeDeg, true) * carry],
+    ['thickness', isScoop ? '+ real flight (thickness, bulletin scoop shape)' : '+ real flight thickness', area(i.flightThicknessIn, i.reposeDeg) * carry],
     ['derate', `+ moving-incline derate (${i.reposeDeg}° → ${r.gammaDynamicDeg.toFixed(0)}° repose)`, area(i.flightThicknessIn, r.gammaDynamicDeg) * carry],
     ['edges', '+ what the flight ends let spill', r.pocketVolumeIn3],
   ]

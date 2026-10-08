@@ -51,6 +51,7 @@ export function computeTdBulkDensity(
     inputs.flightHeightIn,
     inputs.flightThicknessIn,
     inputs.profileOverride,
+    inputs.calcLabMode,
   )
   const end = endTreatment(inputs)
 

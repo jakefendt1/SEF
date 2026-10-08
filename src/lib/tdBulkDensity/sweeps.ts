@@ -69,7 +69,7 @@ function valueOf(inputs: TdInputs, metric: YMetric): number | null {
 function wallsValue(inputs: TdInputs, metric: YMetric): number | null {
   const width = buildWidthModel(inputs)
   if (!(width.carryWidthIn > 0) || !(inputs.flightSpacingIn > inputs.flightThicknessIn)) return null
-  const profile = buildProfile(inputs.flightType, inputs.flightHeightIn, inputs.flightThicknessIn, inputs.profileOverride)
+  const profile = buildProfile(inputs.flightType, inputs.flightHeightIn, inputs.flightThicknessIn, inputs.profileOverride, inputs.calcLabMode)
   const gamma = inputs.calcLabMode ? inputs.reposeDeg : Math.max(0, inputs.reposeDeg - inputs.dynamicDerateDeg)
   const A = computePocket2D(profile, inputs.flightSpacingIn, inputs.inclineDeg, gamma).areaIn2
   const m = massPerFlight(inputs.densityLbFt3, inputs.fillPct, A * width.carryWidthIn)
